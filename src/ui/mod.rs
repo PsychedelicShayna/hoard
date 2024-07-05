@@ -1,6 +1,7 @@
 mod event;
 mod search;
 
+use clap::Parser;
 use eyre::Result;
 use ratatui::{prelude::*, widgets::*};
 use std::io::stdout;
@@ -13,7 +14,7 @@ use crate::config::HoardConfig;
 use crate::core::trove::Trove;
 use crate::core::HoardCmd;
 use crate::ui::event::{Config, Event, Events};
-use crate::ui::search::controls::draw_search_key_handler;
+use crate::ui::search::controls::{draw_search_key_handler, next_index, previous_index};
 use crate::ui::search::render::draw_search_screen;
 
 const DEFAULT_COLLECTIONS: [&str; 2] = ["All", "Local"];
@@ -41,8 +42,11 @@ pub struct App {
     pub search_string: String,
     pub collection: String,
 
+    // Temporary trove that actually gets displayed in the UI
+    // This is used to filter the base trove based on search string
     pub search_trove: Trove,
 
+    // Base trove that is used to filter the search_trove
     pub base_trove: Trove,
 }
 
@@ -71,6 +75,55 @@ impl App {
             base_trove: trove.clone(),
             search_trove: trove,
             ..self.clone()
+        }
+    }
+
+    pub fn increment_selected_command(&mut self) {
+        if self.search_trove.commands.is_empty() {
+            return;
+        }
+        if let Some(selected) = self.commands.selected() {
+            let new_selected = next_index(selected, self.search_trove.commands.len());
+            self.commands.select(Some(new_selected));
+        }
+    }
+
+    pub fn decrement_selected_command(&mut self) {
+        if self.search_trove.commands.is_empty() {
+            return;
+        }
+        if let Some(selected) = self.commands.selected() {
+            let new_selected = previous_index(selected, self.search_trove.commands.len());
+            self.commands.select(Some(new_selected));
+        }
+    }
+
+    pub fn filter_trove(&mut self) {
+        let search_string = self.search_string.to_lowercase();
+
+        if !search_string.is_empty() {
+            let filtered: Vec<HoardCmd> = self
+                .base_trove
+                .commands
+                .iter()
+                .filter(|cmd| cmd.name.to_lowercase().contains(&search_string))
+                .cloned()
+                .collect();
+            self.search_trove = Trove::from_commands(&filtered);
+        } else {
+            self.search_trove = self.base_trove.clone();
+        }
+
+        self.clip_commands_selection();
+    }
+
+    /// Clips the commands selected index to the highest possible index
+    /// of the current search_trove commands len
+    pub fn clip_commands_selection(&mut self) {
+        let selected = self.commands.selected().unwrap_or(0);
+        let max = self.search_trove.commands.len().saturating_sub(1);
+        if selected > max {
+            self.commands.select(Some(max));
         }
     }
 }
@@ -174,17 +227,36 @@ fn not_implemented_ui(frame: &mut Frame, _app: &mut App) {
     );
 }
 
-fn partial_highlighted_line<'a>(text_input: &'a str, search: &'a str, highlighted_bg: bool) -> Line<'a> {
+fn partial_highlighted_line<'a>(
+    text_input: &'a str,
+    search: &'a str,
+    highlighted_bg: bool,
+) -> Line<'a> {
     // find the index of the search string in the text
     let index = text_input.find(&search);
-    
+
     match index {
         Some(i) => {
             let (left, right) = text_input.split_at(i);
             let (highlight, rest) = right.split_at(search.len());
-            let left_span = Span::raw(left).bg(if highlighted_bg { Color::LightBlue } else { Color::Reset });
-            let highlight_span = Span::styled(highlight, Style::default().fg(Color::LightRed).bg(if highlighted_bg { Color::LightBlue } else { Color::Reset }));
-            let rest_span = Span::raw(rest).bg(if highlighted_bg { Color::LightBlue } else { Color::Reset });
+            let left_span = Span::raw(left).bg(if highlighted_bg {
+                Color::LightBlue
+            } else {
+                Color::Reset
+            });
+            let highlight_span = Span::styled(
+                highlight,
+                Style::default().fg(Color::LightRed).bg(if highlighted_bg {
+                    Color::LightBlue
+                } else {
+                    Color::Reset
+                }),
+            );
+            let rest_span = Span::raw(rest).bg(if highlighted_bg {
+                Color::LightBlue
+            } else {
+                Color::Reset
+            });
             Line::from(vec![left_span, highlight_span, rest_span])
         }
         None => Line::from(text_input),

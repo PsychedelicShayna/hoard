@@ -122,7 +122,7 @@ fn render_commands_list_widget(frame: &mut Frame, rect: Rect, app: &mut App) {
 
 fn render_command_string_widget(frame: &mut Frame, rect: Rect, app: &mut App) {
     frame.render_widget(
-        Paragraph::new("cd /home/monarch/code")
+        Paragraph::new(app.commands.selected().unwrap_or(0).to_string())
             .block(Block::default().borders(Borders::ALL).title(" Command "))
             .alignment(Alignment::Center)
             .wrap(Wrap { trim: false }),
