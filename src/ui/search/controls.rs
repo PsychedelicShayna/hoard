@@ -3,19 +3,11 @@ use crate::ui::App;
 
 use termion::event::Key;
 
-
 #[allow(clippy::too_many_lines)]
-pub fn draw_search_key_handler(
-    input: Key,
-    app: &mut App,
-) -> Option<HoardCmd> {
+pub fn draw_search_key_handler(input: Key, app: &mut App) -> Option<HoardCmd> {
     match input {
         Key::Esc | Key::Ctrl('c' | 'd' | 'g') => {
             app.should_exit = true;
-            None
-        }
-        Key::Char(c) => {
-            app.search_string.push(c);
             None
         }
         Key::Backspace => {
@@ -35,7 +27,13 @@ pub fn draw_search_key_handler(
             app.search_string.clear();
             None
         }
+        Key::Ctrl('j') => { 
+            None
+        }
+        Key::Char(c) => {
+            app.search_string.push(c);
+            None
+        }
         _ => None,
     }
-
 }

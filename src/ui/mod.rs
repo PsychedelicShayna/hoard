@@ -41,7 +41,9 @@ pub struct App {
     pub search_string: String,
     pub collection: String,
 
-    pub trove: Trove,
+    pub search_trove: Trove,
+
+    pub base_trove: Trove,
 }
 
 impl Default for App {
@@ -51,7 +53,8 @@ impl Default for App {
             commands: ListState::default(),
             collections: ListState::default(),
             screen: DrawState::Search,
-            trove: Trove::default(),
+            search_trove: Trove::default(),
+            base_trove: Trove::default(),
             search_string: String::new(),
             collection: String::from(DEFAULT_COLLECTIONS[0]),
             vertical_scroll: 0,
@@ -65,7 +68,8 @@ impl Default for App {
 impl App {
     pub fn with_trove(&mut self, trove: Trove) -> Self {
         Self {
-            trove,
+            base_trove: trove.clone(),
+            search_trove: trove,
             ..self.clone()
         }
     }
@@ -170,7 +174,7 @@ fn not_implemented_ui(frame: &mut Frame, _app: &mut App) {
     );
 }
 
-fn partial_highlighted_line<'a>(text_input: &'a str, search: &'a str) -> Line<'a> {
+fn partial_highlighted_line<'a>(text_input: &'a str, search: &'a str, highlighted_bg: bool) -> Line<'a> {
     // find the index of the search string in the text
     let index = text_input.find(&search);
     
@@ -178,9 +182,9 @@ fn partial_highlighted_line<'a>(text_input: &'a str, search: &'a str) -> Line<'a
         Some(i) => {
             let (left, right) = text_input.split_at(i);
             let (highlight, rest) = right.split_at(search.len());
-            let left_span = Span::raw(left);
-            let highlight_span = Span::styled(highlight, Style::default().fg(Color::LightRed));
-            let rest_span = Span::raw(rest);
+            let left_span = Span::raw(left).bg(if highlighted_bg { Color::LightBlue } else { Color::Reset });
+            let highlight_span = Span::styled(highlight, Style::default().fg(Color::LightRed).bg(if highlighted_bg { Color::LightBlue } else { Color::Reset }));
+            let rest_span = Span::raw(rest).bg(if highlighted_bg { Color::LightBlue } else { Color::Reset });
             Line::from(vec![left_span, highlight_span, rest_span])
         }
         None => Line::from(text_input),

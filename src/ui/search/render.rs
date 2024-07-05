@@ -1,5 +1,5 @@
 use crate::config::HoardConfig;
-use crate::ui::{App, partial_highlighted_line};
+use crate::ui::{partial_highlighted_line, App};
 use ratatui::{prelude::*, widgets::*};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -69,7 +69,6 @@ fn render_command_detail(frame: &mut Frame, rect: Rect, app: &mut App) {
 
     render_command_subdetails_widget(frame, detail_layout[2], app);
 }
-
 
 /// Draw the version header
 ///
@@ -149,12 +148,16 @@ fn render_command_subdetails_widget(frame: &mut Frame, rect: Rect, app: &mut App
     );
 }
 
-/// Build the list of commands to display based on the trove in the current 
+/// Build the list of commands to display based on the trove in the current
 /// app state. The list of commands is highlighted based on the search string
 fn build_command_list_items(app: &App) -> Vec<Line> {
-    app.trove
+    let selected_index = app.commands.selected().unwrap_or(0);
+    app.search_trove
         .commands
         .iter()
-        .map(|command| partial_highlighted_line(&command.name, &app.search_string))
+        .enumerate()
+        .map(|(index, command)| {
+            partial_highlighted_line(&command.name, &app.search_string, selected_index == index)
+        })
         .collect()
 }
