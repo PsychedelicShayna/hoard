@@ -48,6 +48,8 @@ pub struct App {
 
     // Base trove that is used to filter the search_trove
     pub base_trove: Trove,
+
+    pub frame_size: Rect
 }
 
 impl Default for App {
@@ -62,6 +64,7 @@ impl Default for App {
             search_string: String::new(),
             collection: String::from(DEFAULT_COLLECTIONS[0]),
             vertical_scroll: 0,
+            frame_size: Rect::default(),
         };
         state.commands.select(Some(0));
         state.collections.select(Some(0));
@@ -86,6 +89,14 @@ impl App {
             let new_selected = next_index(selected, self.search_trove.commands.len());
             self.commands.select(Some(new_selected));
         }
+        // Update the scroll state based on how close the selected command is to the top or bottom
+        let selected = self.commands.selected().unwrap_or(0);
+        let max_scroll = self.search_trove.commands.len().saturating_sub(1);
+        if selected < self.vertical_scroll {
+            self.vertical_scroll = selected;
+        } else if selected > self.vertical_scroll + max_scroll {
+            self.vertical_scroll = selected.saturating_sub(max_scroll);
+        }
     }
 
     pub fn decrement_selected_command(&mut self) {
@@ -95,6 +106,15 @@ impl App {
         if let Some(selected) = self.commands.selected() {
             let new_selected = previous_index(selected, self.search_trove.commands.len());
             self.commands.select(Some(new_selected));
+        }
+
+        // Update the scroll state based on how close the selected command is to the top or bottom
+        let selected = self.commands.selected().unwrap_or(0);
+        let max_scroll = self.search_trove.commands.len().saturating_sub(1);
+        if selected < self.vertical_scroll {
+            self.vertical_scroll = selected;
+        } else if selected > self.vertical_scroll + max_scroll {
+            self.vertical_scroll = selected.saturating_sub(max_scroll);
         }
     }
 
@@ -125,6 +145,17 @@ impl App {
         if selected > max {
             self.commands.select(Some(max));
         }
+    }
+
+    /// Get the selected hoard command from the current search_trove
+    pub fn get_selected_hoard_command(&self) -> Option<HoardCmd> {
+        self.commands.selected().and_then(|index| {
+            if index < self.search_trove.commands.len() {
+                Some(self.search_trove.commands[index].clone())
+            } else {
+                None
+            }
+        })
     }
 }
 

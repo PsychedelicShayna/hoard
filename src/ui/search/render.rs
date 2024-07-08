@@ -1,4 +1,5 @@
 use crate::config::HoardConfig;
+use crate::core::HoardCmd;
 use crate::ui::{partial_highlighted_line, App};
 use ratatui::{prelude::*, widgets::*};
 
@@ -23,6 +24,8 @@ pub fn draw_search_screen(frame: &mut Frame, app: &mut App) {
         ],
     )
     .split(frame.size());
+
+    app.frame_size = frame.size();
 
     render_version_header_widget(frame, main_layout[0]);
 
@@ -121,19 +124,25 @@ fn render_commands_list_widget(frame: &mut Frame, rect: Rect, app: &mut App) {
 }
 
 fn render_command_string_widget(frame: &mut Frame, rect: Rect, app: &mut App) {
+    let selected_command = app.get_selected_hoard_command().unwrap_or(HoardCmd::default());
     frame.render_widget(
-        Paragraph::new(app.commands.selected().unwrap_or(0).to_string())
+        Paragraph::new(selected_command.command.clone())
             .block(Block::default().borders(Borders::ALL).title(" Command "))
-            .alignment(Alignment::Center)
+            .alignment(Alignment::Left)
             .wrap(Wrap { trim: false }),
         rect,
     );
 }
 
 fn render_command_description_widget(frame: &mut Frame, rect: Rect, app: &mut App) {
+    let selected_command = app.get_selected_hoard_command().unwrap_or(HoardCmd::default());
     frame.render_widget(
-        Paragraph::new("This is a longwinded description about the command, Probably left side aligned makes the most sense here")
-            .block(Block::default().borders(Borders::ALL).title(" Description "))
+        Paragraph::new(selected_command.description.clone())
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Description "),
+            )
             .alignment(Alignment::Left)
             .wrap(Wrap { trim: false }),
         rect,
