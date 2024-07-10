@@ -1,3 +1,5 @@
+extern crate edit;
+
 use crate::cli_commands::{Cli, Commands};
 use base64::engine::general_purpose;
 use clap::Parser;
@@ -95,6 +97,9 @@ impl Hoard {
             }
             Commands::Edit { name } => {
                 self.edit_command(name);
+            }
+            Commands::EditTrove {  } => {
+                self.edit_trove();
             }
             Commands::ShellConfig { shell } => {
                 Self::shell_config_command(shell);
@@ -296,6 +301,14 @@ impl Hoard {
                 std::process::exit(1);
             }
         }
+    }
+
+    fn edit_trove(&mut self) {
+        let trove_path = self.config.trove_path.clone().unwrap();
+        let trove_content = fs::read_to_string(trove_path.clone()).unwrap();
+
+        let edited_trove = edit::edit(trove_content).unwrap();
+        fs::write(trove_path, edited_trove).unwrap();
     }
 
     fn edit_command(&mut self, command_name: &str) {
