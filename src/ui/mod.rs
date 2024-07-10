@@ -49,7 +49,7 @@ pub struct App {
     // Base trove that is used to filter the search_trove
     pub base_trove: Trove,
 
-    pub frame_size: Rect
+    pub frame_size: Rect,
 }
 
 impl Default for App {
@@ -85,17 +85,18 @@ impl App {
         if self.search_trove.commands.is_empty() {
             return;
         }
-        if let Some(selected) = self.commands.selected() {
-            let new_selected = next_index(selected, self.search_trove.commands.len());
-            self.commands.select(Some(new_selected));
-        }
+
+        let current_selected = self.commands.selected().unwrap_or(0);
+        let next_selected = next_index(current_selected, self.search_trove.commands.len());
+        self.commands.select(Some(next_selected));
         // Update the scroll state based on how close the selected command is to the top or bottom
-        let selected = self.commands.selected().unwrap_or(0);
-        let max_scroll = self.search_trove.commands.len().saturating_sub(1);
-        if selected < self.vertical_scroll {
-            self.vertical_scroll = selected;
-        } else if selected > self.vertical_scroll + max_scroll {
-            self.vertical_scroll = selected.saturating_sub(max_scroll);
+        let actual_position = current_selected - self.vertical_scroll;
+
+        // If we increment at the last element, reset the scroll to 0
+        if next_selected == 0 {
+            self.vertical_scroll = 0;
+        } else if actual_position >= self.frame_size.height as usize - 6 {
+            self.vertical_scroll = self.vertical_scroll + 1;
         }
     }
 
@@ -106,6 +107,11 @@ impl App {
         if let Some(selected) = self.commands.selected() {
             let new_selected = previous_index(selected, self.search_trove.commands.len());
             self.commands.select(Some(new_selected));
+            // If we jump to the end, just scroll all the way to the bottom
+            if new_selected == self.search_trove.commands.len() - 1 {
+                self.vertical_scroll = self.search_trove.commands.len().saturating_sub(1);
+                return;
+            }
         }
 
         // Update the scroll state based on how close the selected command is to the top or bottom
