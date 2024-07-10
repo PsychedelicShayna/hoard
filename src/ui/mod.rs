@@ -17,7 +17,7 @@ use crate::ui::event::{Config, Event, Events};
 use crate::ui::search::controls::{draw_search_key_handler, next_index, previous_index};
 use crate::ui::search::render::draw_search_screen;
 
-const DEFAULT_COLLECTIONS: [&str; 2] = ["All", "Local"];
+const DEFAULT_COLLECTIONS: [&str; 1] = ["All"];
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum DrawState {
@@ -36,11 +36,12 @@ pub struct App {
     pub vertical_scroll: usize,
     // ratatui list of collections to display
     pub collections: ListState,
+
+    pub current_collection: String,
     // current screen to draw
     pub screen: DrawState,
     // search string to filter commands displayed at the bottom
     pub search_string: String,
-    pub collection: String,
 
     // Temporary trove that actually gets displayed in the UI
     // This is used to filter the base trove based on search string
@@ -62,7 +63,7 @@ impl Default for App {
             search_trove: Trove::default(),
             base_trove: Trove::default(),
             search_string: String::new(),
-            collection: String::from(DEFAULT_COLLECTIONS[0]),
+            current_collection: String::from(DEFAULT_COLLECTIONS[0]),
             vertical_scroll: 0,
             frame_size: Rect::default(),
         };
@@ -81,66 +82,52 @@ impl App {
         }
     }
 
-    pub fn increment_selected_command(&mut self) {
-        if self.search_trove.commands.is_empty() {
-            return;
+    fn apply_cmd_filter(cmd: &HoardCmd, search_string: &str, current_collection: &str) -> bool {
+        let search_string = search_string.to_lowercase();
+        let current_collection = current_collection.to_lowercase();
+
+        let in_current_collection =
+            current_collection == "all" || cmd.namespace.to_lowercase() == current_collection;
+        let contains_search_string = cmd.name.to_lowercase().contains(&search_string);
+
+        if search_string.is_empty() {
+            return in_current_collection;
         }
 
-        let current_selected = self.commands.selected().unwrap_or(0);
-        let next_selected = next_index(current_selected, self.search_trove.commands.len());
-        self.commands.select(Some(next_selected));
-        // Update the scroll state based on how close the selected command is to the top or bottom
-        let actual_position = current_selected - self.vertical_scroll;
-
-        // If we increment at the last element, reset the scroll to 0
-        if next_selected == 0 {
-            self.vertical_scroll = 0;
-        } else if actual_position >= self.frame_size.height as usize - 6 {
-            self.vertical_scroll = self.vertical_scroll + 1;
-        }
-    }
-
-    pub fn decrement_selected_command(&mut self) {
-        if self.search_trove.commands.is_empty() {
-            return;
-        }
-        if let Some(selected) = self.commands.selected() {
-            let new_selected = previous_index(selected, self.search_trove.commands.len());
-            self.commands.select(Some(new_selected));
-            // If we jump to the end, just scroll all the way to the bottom
-            if new_selected == self.search_trove.commands.len() - 1 {
-                self.vertical_scroll = self.search_trove.commands.len().saturating_sub(1);
-                return;
-            }
-        }
-
-        // Update the scroll state based on how close the selected command is to the top or bottom
-        let selected = self.commands.selected().unwrap_or(0);
-        let max_scroll = self.search_trove.commands.len().saturating_sub(1);
-        if selected < self.vertical_scroll {
-            self.vertical_scroll = selected;
-        } else if selected > self.vertical_scroll + max_scroll {
-            self.vertical_scroll = selected.saturating_sub(max_scroll);
-        }
+        in_current_collection && contains_search_string
     }
 
     pub fn filter_trove(&mut self) {
         let search_string = self.search_string.to_lowercase();
 
-        if !search_string.is_empty() {
-            let filtered: Vec<HoardCmd> = self
-                .base_trove
-                .commands
-                .iter()
-                .filter(|cmd| cmd.name.to_lowercase().contains(&search_string))
-                .cloned()
-                .collect();
-            self.search_trove = Trove::from_commands(&filtered);
-        } else {
-            self.search_trove = self.base_trove.clone();
-        }
+        let filtered: Vec<HoardCmd> = self
+            .base_trove
+            .commands
+            .iter()
+            .filter(|cmd| Self::apply_cmd_filter(cmd, &search_string, &self.current_collection))
+            .cloned()
+            .collect();
+        self.search_trove = Trove::from_commands(&filtered);
 
         self.clip_commands_selection();
+    }
+
+    pub fn next_collection(&mut self) {
+        // Get the namespaces of the Trove and transform hashset to a list
+        let trove_collection = self.base_trove.namespaces.clone();
+        let mut collections: Vec<String> = trove_collection.into_iter().collect();
+        collections.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+        // Prepend all DEFAULT_COLLECTIONS to the list of collections
+        collections.splice(0..0, DEFAULT_COLLECTIONS.iter().map(|s| s.to_string()));
+        // Based on current self.current_collection get the index of the next collection
+        let current_index = collections
+            .iter()
+            .position(|s| s == &self.current_collection)
+            .unwrap();
+        let next_index = next_index(current_index, collections.len());
+        self.collections.select(Some(next_index));
+        self.current_collection = collections[next_index].clone();
+        self.filter_trove();
     }
 
     /// Clips the commands selected index to the highest possible index
@@ -168,7 +155,7 @@ impl App {
 /// The main entry point for the UI
 /// Handles setting up the UI, running the main loop
 /// and switching between different screens based on events it recieves
-pub fn run(trove: &mut Trove, config: &HoardConfig) -> Result<()> {
+pub fn run(trove: &mut Trove, config: &HoardConfig) -> Result<HoardCmd> {
     // Setup terminal
     let stdout = stdout().into_raw_mode()?;
     let stdout = stdout.into_alternate_screen().unwrap();
@@ -184,12 +171,14 @@ pub fn run(trove: &mut Trove, config: &HoardConfig) -> Result<()> {
     // Cleanup
     terminal.show_cursor()?;
 
-    if let Err(err) = res {
-        eprintln!("{err}");
-        return Err(err);
+    match res {
+        Ok(Some(cmd)) => Ok(cmd),
+        Ok(None) => {
+            // If the UI exited without a command, return an error just to not
+            Err(eyre::eyre!("Exited without a command"))
+        }
+        Err(err) => Err(err),
     }
-
-    Ok(())
 }
 
 fn run_app<B: Backend>(
