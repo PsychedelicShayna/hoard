@@ -1,4 +1,4 @@
-use crate::gui::theme::HoardTheme;
+// use crate::gui::theme::HoardTheme;
 use dialoguer::{Input, MultiSelect, Password, Select};
 pub enum Confirmation {
     Yes,
@@ -19,7 +19,7 @@ where
     let options_texts: Vec<S> = options.iter().map(text_extractor).collect();
 
     if matches!(prompt_yes_or_no(question), Confirmation::Yes) {
-        let selected_indices = MultiSelect::with_theme(&HoardTheme::default())
+        let selected_indices = MultiSelect::new()
             .with_prompt(selection_prompt)
             .items(&options_texts)
             .interact()
@@ -34,7 +34,7 @@ where
 pub fn prompt_yes_or_no(text: &str) -> Confirmation {
     const YES_ANSWER: usize = 0;
 
-    let answer = Select::with_theme(&HoardTheme::default())
+    let answer = Select::new()
         .with_prompt(text)
         .items(&["Yes", "No"])
         .default(YES_ANSWER)
@@ -49,7 +49,7 @@ pub fn prompt_yes_or_no(text: &str) -> Confirmation {
 }
 
 pub fn prompt_select_with_options(text_prompt: &str, options: &[&str]) -> usize {
-    Select::with_theme(&HoardTheme::default())
+    Select::new()
         .with_prompt(text_prompt)
         .items(options)
         .default(0)
@@ -76,8 +76,8 @@ pub fn prompt_input_validate<F>(
 where
     F: FnMut(&String) -> Result<(), String>,
 {
-    let theme = HoardTheme::default();
-    let mut input: Input<String> = Input::with_theme(&theme);
+    // let theme = HoardTheme::default();
+    let mut input: Input<String> = Input::new();
     // Add default value to input prompt
     if let Some(val) = default_value {
         input.default(val);
@@ -91,7 +91,7 @@ where
 }
 
 pub fn prompt_password_repeat(text: &str) -> String {
-    Password::with_theme(&HoardTheme::default())
+    Password::new()
         .with_prompt(text)
         .with_confirmation("Repeat password", "Error: the passwords don't match.")
         .interact()
@@ -99,7 +99,7 @@ pub fn prompt_password_repeat(text: &str) -> String {
 }
 
 pub fn prompt_password(text: &str) -> String {
-    Password::with_theme(&HoardTheme::default())
+    Password::new()
         .with_prompt(text)
         .interact()
         .unwrap()

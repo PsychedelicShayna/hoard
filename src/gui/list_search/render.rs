@@ -98,11 +98,9 @@ pub fn draw(
             .split(commands_chunks[1]);
         let (commands, command, tags_widget, description, input) =
             render_commands(&app_state.commands.clone(), app_state, config);
-        rect.render_stateful_widget(
-            commands,
-            commands_chunks[0],
-            &mut app_state.command_list,
-        );
+
+        rect.render_stateful_widget(commands, commands_chunks[0], &mut app_state.command_list);
+
         rect.render_widget(tags_widget, command_detail_chunks[0]);
         rect.render_widget(description, command_detail_chunks[1]);
         rect.render_widget(command, command_detail_chunks[2]);
@@ -126,20 +124,7 @@ pub fn draw(
                 config.primary_color.unwrap().2,
             )))
             .alignment(Alignment::Left);
-        let help_hint = Paragraph::new(format!(
-            "Create <Ctrl-W> | Delete <Ctrl-X> | GPT <Ctrl-A> | Help {HELP_KEY}"
-        ))
-        .style(Style::default().fg(Color::Rgb(
-            config.primary_color.unwrap().0,
-            config.primary_color.unwrap().1,
-            config.primary_color.unwrap().2,
-        )))
-        .alignment(Alignment::Right);
 
-        rect.render_widget(help_hint_l, footer_chunk[0]);
-        if app_state.control == ControlState::Search {
-            rect.render_widget(help_hint, footer_chunk[1]);
-        }
         let vi_mode = match &app_state.vimode {
             ViMode::Normal => "Normal",
             ViMode::Insert => "Insert",
@@ -255,9 +240,25 @@ fn render_commands<'a>(
     Paragraph<'a>,
     Paragraph<'a>,
 ) {
+    let highlighted = Color::Rgb(
+        config.secondary_color.unwrap().0,
+        config.secondary_color.unwrap().1,
+        config.secondary_color.unwrap().2,
+    );
+
+    let normal = Color::Rgb(
+        config.primary_color.unwrap().0,
+        config.primary_color.unwrap().1,
+        config.primary_color.unwrap().2,
+    );
+    let color = match app.control {
+        ControlState::Search if matches!(app.vimode, ViMode::Normal) => highlighted,
+        _ => normal,
+    };
+
     let commands = Block::default()
         .borders(Borders::ALL)
-        .style(Style::default().fg(get_color(app, config, &EditSelection::Name)))
+        .style(Style::default().fg(color))
         .title(" Commands ")
         .border_type(BorderType::Plain);
 
@@ -292,30 +293,21 @@ fn render_commands<'a>(
 
     let list = List::new(items).block(commands).highlight_style(
         Style::default()
-            .bg(Color::Rgb(
-                config.secondary_color.unwrap().0,
-                config.secondary_color.unwrap().1,
-                config.secondary_color.unwrap().2,
-            ))
-            .fg(Color::Rgb(
-                config.tertiary_color.unwrap().0,
-                config.tertiary_color.unwrap().1,
-                config.tertiary_color.unwrap().2,
-            ))
+            .bg(Color::Rgb(30, 30, 30))
+            .fg(Color::Rgb(150, 130, 110))
             .add_modifier(Modifier::BOLD),
     );
 
-    let hoarded_command_title = format!(" Hoarded command --- Times selected: {} ", selected_command.usage_count);
+    let hoarded_command_title = format!(
+        " Hoarded command --- Times selected: {} ",
+        selected_command.usage_count
+    );
     let command = Paragraph::new(coerce_string_by_mode(
         selected_command.command.clone(),
         app,
         &EditSelection::Command,
     ))
-    .style(Style::default().fg(Color::Rgb(
-        config.primary_color.unwrap().0,
-        config.primary_color.unwrap().1,
-        config.primary_color.unwrap().2,
-    )))
+    .style(Style::default())
     .alignment(Alignment::Left)
     .wrap(Wrap { trim: true })
     .block(
@@ -326,7 +318,7 @@ fn render_commands<'a>(
             .border_type(BorderType::Plain),
     );
 
-    let tags     = Paragraph::new(coerce_string_by_mode(
+    let tags = Paragraph::new(coerce_string_by_mode(
         selected_command.get_tags_as_string(),
         app,
         &EditSelection::Tags,
@@ -345,38 +337,36 @@ fn render_commands<'a>(
             .border_type(BorderType::Plain),
     );
 
-    let description = Paragraph::new(coerce_string_by_mode(
-        selected_command.description,
-        app,
-        &EditSelection::Description,
-    ))
-    .style(Style::default().fg(Color::Rgb(
-        config.primary_color.unwrap().0,
-        config.primary_color.unwrap().1,
-        config.primary_color.unwrap().2,
-    )))
-    .alignment(Alignment::Left)
-    .wrap(Wrap { trim: true })
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .style(Style::default().fg(get_color(app, config, &EditSelection::Description)))
-            .title(" Description ")
-            .border_type(BorderType::Plain),
-    );
+    let description: Paragraph<'_> = {
+        Paragraph::new(coerce_string_by_mode(
+            selected_command.description,
+            app,
+            &EditSelection::Description,
+        ))
+        .style(Style::default().fg(Color::Rgb(
+            config.primary_color.unwrap().0,
+            config.primary_color.unwrap().1,
+            config.primary_color.unwrap().2,
+        )))
+        .alignment(Alignment::Left)
+        .wrap(Wrap { trim: true })
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .style(Style::default().fg(get_color(app, config, &EditSelection::Description)))
+                .title(" Description ")
+                .border_type(BorderType::Plain),
+        )
+    };
 
     let mut query_string = config.query_prefix.clone();
     query_string.push_str(&app.input.clone()[..]);
     let query_title = format!(" hoard v{VERSION} ");
     let input = Paragraph::new(query_string).block(
         Block::default()
-            .style(Style::default().fg(Color::Rgb(
-                config.primary_color.unwrap().0,
-                config.primary_color.unwrap().1,
-                config.primary_color.unwrap().2,
-            )))
+            .style(Style::default().fg(color))
             .borders(Borders::ALL)
-            .title(query_title),
+            .border_type(BorderType::Rounded), // .title(query_title),
     );
 
     (list, command, tags, description, input)

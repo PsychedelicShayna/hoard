@@ -255,7 +255,12 @@ pub fn run(trove: &mut Trove, config: &HoardConfig) -> Result<Option<HoardCmd>> 
                         &trove.commands,
                         &namespace_tabs,
                     ),
-                    ControlState::Edit => key_handler_inline_edit(input, &mut app_state),
+                    ControlState::Edit => key_handler_inline_edit(
+                        input,
+                        &mut app_state,
+                        &trove.commands,
+                        &namespace_tabs,
+                    ),
                     ControlState::Gpt => key_handler_gpt_create(input, &mut app_state),
                     ControlState::KeyNotSet => key_handler_no_key_set(input, &mut app_state),
                 },
@@ -277,7 +282,7 @@ pub fn run(trove: &mut Trove, config: &HoardConfig) -> Result<Option<HoardCmd>> 
                     trove.update_command_by_name(&output);
                     app_state.commands = trove.commands.clone();
                     app_state.commands.sort_by(|a, b| b.usage_count.cmp(&a.usage_count));
-                    app_state.control = ControlState::Search;
+                    // app_state.control = ControlState::Search;
                 } else if app_state.should_delete {
                     trove.remove_command(&output.name).ok();
                     app_state.commands = trove.commands.clone();
