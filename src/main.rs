@@ -1,27 +1,17 @@
-extern crate serde_yaml;
+// let (command, is_autocomplete) =
+// Hoard::default().with_config(None).load_trove().start();
 
-#[macro_use]
-extern crate prettytable;
-extern crate dotenv;
-extern crate rand;
+use tui::event_loop::EventLoop;
 
-extern crate array_tool;
-
-mod cli_commands;
-mod config;
-mod core;
-mod filter;
-mod gui;
-mod hoard;
-mod util;
-use hoard::Hoard;
+pub mod cfg;
+pub mod cli;
+pub mod dbg;
+pub mod tui;
+pub mod data;
+const TICK_RATE: u64 = 100;
 
 #[tokio::main]
 async fn main() {
-    let (command, is_autocomplete) = Hoard::default().with_config(None).load_trove().start();
-    if is_autocomplete {
-        eprintln!("{}", command.trim());
-    } else {
-        println!("{}", command.trim());
-    }
+    let mut event_loop = EventLoop::new();
+    event_loop.run(TICK_RATE);
 }
