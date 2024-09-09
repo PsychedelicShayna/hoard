@@ -12,6 +12,7 @@ use ratatui::Terminal;
 use termion::screen::AlternateScreen;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+const IBEAM: &str = "▕";
 
 #[allow(clippy::too_many_lines)]
 pub fn draw(
@@ -366,7 +367,6 @@ fn render_commands<'a>(
 
     let mut query_string = config.query_prefix.clone() + " ";
     query_string.push_str(&app.input.clone()[..]);
-    let query_title = format!(" hoard v{VERSION} ");
     if matches!(app.control, ControlState::Search) && matches!(app.vimode, ViMode::Insert) {
         query_string.push_str(IBEAM);
     }
