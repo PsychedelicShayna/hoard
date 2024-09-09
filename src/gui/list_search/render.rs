@@ -24,6 +24,7 @@ pub fn draw(
 ) -> Result<(), eyre::Error> {
     terminal.draw(|rect| {
         let size = rect.size();
+
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .margin(1)
@@ -37,6 +38,7 @@ pub fn draw(
                 .as_ref(),
             )
             .split(size);
+
         let menu = namespace_tabs
             .iter()
             .map(|t| {
@@ -159,6 +161,9 @@ pub fn draw(
             rect.render_widget(Clear, area); //this clears out the background
             rect.render_widget(description, area);
         }
+        let help_hint = Paragraph::new(format!("[{}] ", vi_mode)).alignment(Alignment::Left);
+        rect.render_widget(help_hint, footer_chunk[0]);
+        rect.render_widget(help_hint_l, footer_chunk[1]);
     })?;
     Ok(())
 }
@@ -359,9 +364,16 @@ fn render_commands<'a>(
         )
     };
 
-    let mut query_string = config.query_prefix.clone();
+    let mut query_string = config.query_prefix.clone() + " ";
     query_string.push_str(&app.input.clone()[..]);
     let query_title = format!(" hoard v{VERSION} ");
+    if matches!(app.control, ControlState::Search) && matches!(app.vimode, ViMode::Insert) {
+        query_string.push_str(IBEAM);
+    }
+    let color = match app.control {
+        ControlState::Search if matches!(app.vimode, ViMode::Insert) => highlighted,
+        _ => normal,
+    };
     let input = Paragraph::new(query_string).block(
         Block::default()
             .style(Style::default().fg(color))

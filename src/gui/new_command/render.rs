@@ -7,6 +7,8 @@ use ratatui::widgets::{Block, Paragraph};
 use ratatui::Terminal;
 use termion::screen::AlternateScreen;
 
+const IBEAM: &str = "▕";
+
 pub fn draw(
     app_state: &State,
     config: &HoardConfig,
@@ -35,6 +37,7 @@ pub fn draw(
 
         let mut query_string = config.query_prefix.clone();
         query_string.push_str(&app_state.input.clone()[..]);
+
         let title_string = format!("Provide {} for the command", app_state.edit_selection);
 
         let command_style = Style::default().fg(Color::Rgb(
@@ -49,7 +52,7 @@ pub fn draw(
             config.primary_color.unwrap().2,
         ));
 
-        let input = Paragraph::new(query_string)
+        let input = Paragraph::new(query_string + IBEAM)
             .style(primary_style)
             .block(Block::default().style(command_style).title(title_string));
         let new_command = app_state.new_command.clone().unwrap();
