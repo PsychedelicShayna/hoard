@@ -1,3 +1,14 @@
+## This is a fork, I'm not the creator.
+The concept of Hoard is something that's been in my head for a long time. I have so many commands and invocations it's hard to keep track of them all. I want a TUI database of commands I can browse, with tags attached to each command, and sorted categorically.
+
+So naturally when I found Hoard, I was excited. Just one problem. No Vim keybindings. That and the UI is a bit unpolished, and the overall user experience is a bit clunky. That being said, conceptually there's a good foundation that meets 70% of what I imagined in my head and have been searching for all this time. It would be a shame to just drop this utility because of the remaining 30%. That's what this fork is, an attempt to implement the remaining 30%.
+
+Hoard was created quite a long time ago though, and there have been advancements in TUI libraries in Rust since then, so I'm still debating whether or not I should refactor the entire codebase or just work on the missing components. When I saw the search box had no cursor, and I had to add a unicode IBeam character to the end of a buffer being used by what's effectively a label in GUI terms being duct-taped to act as a LineEdit/input field via keypress events.. made me really start considering a refactor. This isn't exactly the pinacle of modern Rust TUI libraries. It's not even the author's fault either, I couldn't find an actual LineEdit widget anywhere in that version of the TUI library being used. The author clearly must have ran into the same issue and did what they could with what they had, which I genuinely respect, because my unhealthy level of perfectionism would have made me quit right there and I'd have never completed the project and gotten something out.
+
+The codebase is roughly 3,500 lines, so a refactor wouldn't be *that* tedius, but the code structure would change so much that I might as well make an entirely new project using Hoard as a reference rather than a basis. I'm not sure. Maybe. We'll see. 
+
+---
+
 <p align="center">
 <img src=img/hoard_icon.png width="400">
 </p>
