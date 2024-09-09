@@ -19,7 +19,7 @@ impl AddNewCommand {
 }
 
 impl Activity for AddNewCommand {
-    fn on_key_press(&self, key: Key) {
+    fn on_key_press(&mut self, key: Key) {
         println!(
             "{}:{} CommandBrowser key pressed: {:?}",
             file!(),

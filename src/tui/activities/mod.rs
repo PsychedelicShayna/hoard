@@ -17,7 +17,7 @@ type TermHandle =
     Terminal<TermionBackend<AlternateScreen<termion::raw::RawTerminal<std::io::Stdout>>>>;
 
 pub trait Activity {
-    fn on_key_press(&self, key: Key);
+    fn on_key_press(&mut self, key: Key);
     fn draw(&mut self, terminal: &mut TermHandle);
     fn signal_event_loop(&self, event: Event) -> ah::Result<()>;
 }
@@ -29,7 +29,7 @@ pub enum Activities {
 }
 
 impl Activity for Activities {
-    fn on_key_press(&self, key: Key) {
+    fn on_key_press(&mut self, key: Key) {
         match self {
             Activities::AddNewCommand(activity) => activity.lock().unwrap().on_key_press(key),
             Activities::CommandBrowser(activity) => activity.lock().unwrap().on_key_press(key),

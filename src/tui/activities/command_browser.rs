@@ -1,7 +1,7 @@
 use crossbeam_channel::Sender;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout},
-    style::{Modifier, Style},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph, Tabs, Wrap},
 };
@@ -100,10 +100,16 @@ impl CommandBrowser {
 
     /// Generates selectable panels that can be cycled between and edited.
     pub fn generate_panels<'a>(&mut self) -> CommandBrowserWidgets<'a> {
+        let list_area_color = if let SelectablePanel::CommandList = self.selected_panel {
+            Color::Rgb(0, 255, 0)
+        } else {
+            Color::Rgb(200, 200, 200)
+        };
+
         // The frame of the command list.
         let list_area = Block::default()
             .borders(Borders::ALL)
-            .style(Style::default())
+            .style(Style::default().fg(list_area_color))
             .title(" Commands ")
             .border_type(BorderType::Plain);
 
@@ -161,14 +167,20 @@ impl CommandBrowser {
             .unwrap_or_default();
 
         // Only add a cursor to the tags string when in insert mode.
-        if let ViMode::Insert = self.vimode {
+        if matches!(self.vimode, ViMode::Insert) && matches!(self.selected_panel, SelectablePanel::CommandTags){
             tags_str.push_str(IBEAM);
         }
+
+        let tags_widget_color = if let SelectablePanel::CommandTags = self.selected_panel {
+            Color::Rgb(0, 255, 0)
+        } else {
+            Color::Rgb(200, 200, 200)
+        };
 
         // Unlike the list widget, the paragraph where the tags are supposed
         // to go can be empty, as it's not part of a list widget.
         let tags_widget: Paragraph<'_> = Paragraph::new(tags_str)
-            .style(Style::default())
+            .style(Style::default().fg(tags_widget_color))
             .alignment(Alignment::Left)
             .block(
                 Block::default()
@@ -184,12 +196,19 @@ impl CommandBrowser {
             .unwrap_or_default();
 
         // Only add a cursor to the description string when in insert mode.
-        if let ViMode::Insert = self.vimode {
+        if matches!(self.vimode, ViMode::Insert) && matches!(self.selected_panel, SelectablePanel::CommandDescription) {
             description_str.push_str(IBEAM);
         }
 
+        let description_widget_color =
+            if let SelectablePanel::CommandDescription = self.selected_panel {
+                Color::Rgb(0, 255, 0)
+            } else {
+                Color::Rgb(200, 200, 200)
+            };
+
         let description_widget: Paragraph<'_> = Paragraph::new(description_str)
-            .style(Style::default())
+            .style(Style::default().fg(description_widget_color))
             .alignment(Alignment::Left)
             .wrap(Wrap { trim: true })
             .block(
@@ -203,7 +222,7 @@ impl CommandBrowser {
         let mut search_bar_string = format!(" > {}", self.search_filter);
 
         // Only add a cursor to the search bar string when in insert mode.
-        if let ViMode::Insert = self.vimode {
+        if matches!(self.vimode, ViMode::Insert) && matches!(self.selected_panel, SelectablePanel::CommandList){
             search_bar_string.push_str(IBEAM);
         }
 
@@ -225,7 +244,56 @@ impl CommandBrowser {
 }
 
 impl Activity for CommandBrowser {
-    fn on_key_press(&self, key: Key) {}
+    fn on_key_press(&mut self, key: Key) {
+        if let ViMode::Insert = self.vimode {
+            match key {
+                Key::Char(c) => {
+                    self.insert_mode_buffer.push(c);
+                }
+                Key::Backspace => {
+                    self.insert_mode_buffer.pop();
+                }
+                Key::Esc => {
+                    self.vimode = ViMode::Normal;
+                }
+                _ => {}
+            }
+        } else {
+            match key {
+                Key::Char('i') => {
+                    self.vimode = ViMode::Insert;
+                }
+
+                Key::Char('k') => match self.selected_panel {
+                    SelectablePanel::CommandDescription => {
+                        self.selected_panel = SelectablePanel::CommandTags;
+                    }
+                    _ => {}
+                },
+
+                Key::Char('j') => match self.selected_panel {
+                    SelectablePanel::CommandTags => {
+                        self.selected_panel = SelectablePanel::CommandDescription;
+                    }
+                    _ => {}
+                },
+
+                Key::Char('h') => match self.selected_panel {
+                    SelectablePanel::CommandDescription | SelectablePanel::CommandTags => {
+                        self.selected_panel = SelectablePanel::CommandList;
+                    }
+                    _ => {}
+                },
+                Key::Char('l') => match self.selected_panel {
+                    SelectablePanel::CommandList => {
+                        self.selected_panel = SelectablePanel::CommandDescription;
+                    }
+                    _ => {}
+                },
+                _ => {}
+            }
+        }
+    }
 
     fn draw(&mut self, terminal: &mut TermHandle) {
         let namespace_tabs = ["All", "Default", "Personal", "Work"];
@@ -313,7 +381,7 @@ impl Activity for CommandBrowser {
 
             let (footer_constraint_left, footer_constraint_right) = match self.vimode {
                 ViMode::Normal => (50, 50),
-                ViMode::Insert => (99, 1)
+                ViMode::Insert => (99, 1),
             };
 
             let footer_chunk = Layout::default()

@@ -153,7 +153,7 @@ impl EventLoop {
             if let Ok(event) = self.event_receiver.recv_timeout(Duration::from_millis(100)) {
                 match event {
                     Event::KeyPressed(key) => {
-                        if let Some(activity) = &self.current_activity {
+                        if let Some(activity) = &mut self.current_activity {
                             activity.on_key_press(key);
                         }
                     }
@@ -163,8 +163,6 @@ impl EventLoop {
                     _ => continue,
                 }
             }
-
-            thread::sleep(Duration::from_millis(self.tick_rate.load(SeqCst)));
         }
 
         Ok(())
