@@ -27,35 +27,32 @@ name = "vihoard"
 path = "src/main.rs"
 
 [dependencies]
-# Command line argument parser
-clap = { version = "4.4.8", features = ["derive"] }
-# pretty dialogues in terminal
-dialoguer = "0.10.3"
-termion = "2.0.1"
-# Yaml support to save/load command pallettes
-serde = { version = "1.0", features = ["derive"] }
-serde_yaml = "0.8"
-serde_json = "1.0"
-serde_with = "1.11.0"
-anyhow = "1.0.71"
-dirs = "4.0.0"
-log = "0.4"
-eyre = "0.6"
-simple_logger = "4.1.0"
-prettytable-rs = "0.10.0"
-ratatui = { version = "0.22.0", features = ["termion"] }
-chrono = { version = "0.4", features = ["serde"] }
-rand = { version = "0.8.4", features = ["std"] }
-thiserror = "1.0"
-crossbeam-channel = "0.5.8"
-tokio = { version = "1.25.0", features = ["full"] }
+anyhow = "1.0.87"
 array_tool = "1.0.3"
-console = "0.15.7"
-enum-iterator = "1.4.0"
-base64 = "0.21.2"
+base64 = "0.22.1"
+chrono = { version = "0.4.38", features = ["serde"] }
+clap = { version = "4.5.17", features = ["derive"] }
+console = "0.15.8"
+crossbeam-channel = "0.5.13"
+dialoguer = "0.11.0"
+dirs = "5.0.1"
 dotenv = "0.15.0"
-h2 = "0.3.20"
-regex = "1.10.2"
+enum-iterator = "2.1.0"
+eyre = "0.6.12"
+h2 = "0.4.6"
+log = "0.4.22"
+prettytable-rs = "0.10.0"
+rand = { version = "0.8.5", features = ["std"] }
+ratatui = { version = "0.28.1", features = ["termion"] }
+regex = "1.10.6"
+serde = { version = "1.0.210", features = ["derive"] }
+serde_json = "1.0.128"
+serde_with = "3.9.0"
+serde_yaml = "0.9.34"
+simple_logger = "5.0.0"
+termion = "4.0.2"
+thiserror = "1.0.63"
+tokio = { version = "1.40.0", features = ["full"] }
 
 [dev-dependencies]
 tempfile = "3.3.0"
