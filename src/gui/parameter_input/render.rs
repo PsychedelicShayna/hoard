@@ -75,7 +75,7 @@ pub fn draw(
 
         full_named_token.push_str(ending_token);
         // Select the split based on whether the ending token is part of the command or not
-        
+
         let split_token = if command_text.contains(ending_token) {
             full_named_token
         } else {

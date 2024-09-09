@@ -285,7 +285,6 @@ fn save_config(config_to_save: &HoardConfig, config_path: &Path) -> Result<(), E
     Ok(())
 }
 
-
 #[cfg(test)]
 mod test_config {
     use super::{save_parameter_token, HoardConfig, HOARD_CONFIG};

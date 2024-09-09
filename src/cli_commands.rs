@@ -121,5 +121,4 @@ pub enum Commands {
         #[arg(short = 's', long)]
         shell: String,
     },
-
 }

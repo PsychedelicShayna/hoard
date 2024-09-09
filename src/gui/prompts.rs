@@ -90,8 +90,6 @@ where
     input.with_prompt(text).interact_text().unwrap()
 }
 
-
-
 fn take_elements_by_indices<T>(elements: &[T], indices: &[usize]) -> Vec<T>
 where
     T: Clone,

@@ -12,10 +12,7 @@ use crate::core::trove::Trove;
 use crate::core::HoardCmd;
 use crate::filter::query_trove;
 use crate::gui::commands_gui;
-use crate::gui::prompts::{
-    prompt_multiselect_options,
-    prompt_yes_or_no, Confirmation,
-};
+use crate::gui::prompts::{prompt_multiselect_options, prompt_yes_or_no, Confirmation};
 use base64::Engine as _;
 #[derive(Default, Debug)]
 pub struct Hoard {
@@ -41,6 +38,7 @@ impl Hoard {
 
     pub fn start(&mut self) -> (String, bool) {
         dotenv().ok();
+
         let mut autocomplete_command = String::new();
         let cli = Cli::parse();
 
@@ -342,4 +340,3 @@ impl Hoard {
         }
     }
 }
-

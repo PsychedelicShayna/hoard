@@ -160,7 +160,7 @@ fn get_color(
     );
 
     match app.control {
-        ControlState::Search  => normal,
+        ControlState::Search => normal,
         ControlState::Edit => {
             if command_render == &app.edit_selection {
                 return highlighted;
@@ -343,4 +343,3 @@ const fn get_footer_constraints(control: &ControlState) -> (u16, u16) {
         ControlState::Edit => (99, 1),
     }
 }
-

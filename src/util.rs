@@ -12,7 +12,6 @@ pub fn translate_number_to_nth(count: u16) -> String {
     }
 }
 
-
 pub fn string_find_next(s: &str, from: &str, to: &str) -> String {
     // Find substring of a string `s` from first occurrence of `from` to first occurrence of `to` after `from` was encountered
     // For example:

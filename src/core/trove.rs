@@ -82,10 +82,13 @@ impl Trove {
                 }
             },
         );
-        trove.namespaces = trove.namespaces().into_iter().map(std::string::ToString::to_string).collect();
+        trove.namespaces = trove
+            .namespaces()
+            .into_iter()
+            .map(std::string::ToString::to_string)
+            .collect();
         trove
     }
-
 
     /// Serialize trove collection to yaml format and returns it as a string
     pub fn to_yaml(&self) -> String {
@@ -135,13 +138,13 @@ impl Trove {
     }
 
     /// Adds a command to trove file
-    /// 
+    ///
     /// Returns `true` if the command has been added
-    /// 
+    ///
     /// Returns `false` if the command has not been added due to a name collision that has been resolved where the trove did not change
-    /// 
+    ///
     /// if `overwrite_colliding` is set to true, the name of the command will get a random string suffix to resolve the name collision before adding it to the trove
-    /// 
+    ///
     /// if `overwrite_colliding` is set to false, the name collision will not be resolved and the command will not be added to the trove
     pub fn add_command(
         &mut self,
@@ -185,9 +188,9 @@ impl Trove {
     }
 
     /// Remove a command from the trove collection
-    /// 
+    ///
     /// Returns `Ok(())` if the command has been removed
-    /// 
+    ///
     /// Returns `Err(anyhow::Error)` if the command to remove is not in the trove
     pub fn remove_command(&mut self, name: &str) -> Result<(), anyhow::Error> {
         let command_position = self.commands.iter().position(|x| x.name == name);

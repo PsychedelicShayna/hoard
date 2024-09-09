@@ -30,7 +30,6 @@ impl Default for Config {
 }
 
 impl Events {
-
     #[allow(clippy::manual_flatten)]
     pub fn with_config(config: Config) -> Self {
         let (tx, rx) = unbounded();

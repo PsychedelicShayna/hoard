@@ -3,7 +3,12 @@ use crate::gui::commands_gui::{ControlState, EditSelection, State, ViMode};
 use crate::gui::list_search::controls::{next_index, previous_index, switch_namespace};
 use termion::event::Key;
 
-pub fn key_handler(input: Key, state: &mut State, trove_commands: &[HoardCmd], namespace_tabs: &[&str] ) -> Option<HoardCmd> {
+pub fn key_handler(
+    input: Key,
+    state: &mut State,
+    trove_commands: &[HoardCmd],
+    namespace_tabs: &[&str],
+) -> Option<HoardCmd> {
     match (&state.vimode, input) {
         (ViMode::Insert, Key::Esc) => {
             state.vimode = ViMode::Normal;

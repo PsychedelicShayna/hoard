@@ -545,6 +545,7 @@ mod test_commands {
         let expected = vec!["foo".to_string(), "bar".to_string()];
         assert_eq!(expected, command.tags);
     }
+
     #[test]
     fn parse_no_whitespace_in_tags() {
         let command = HoardCmd::default().with_tags_raw("foo,bar");
