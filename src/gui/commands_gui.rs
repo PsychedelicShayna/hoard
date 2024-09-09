@@ -27,6 +27,7 @@ pub struct State {
     pub command_list: ListState,
     pub commands: Vec<HoardCmd>,
     pub control: ControlState,
+    pub vimode: ViMode,
     pub draw: DrawState,
     pub edit_selection: EditSelection,
     pub error_message: String,
@@ -73,6 +74,12 @@ impl State {
     }
 }
 
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub enum ViMode {
+    Normal,
+    Insert,
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub enum DrawState {
     Search,
@@ -92,11 +99,11 @@ pub enum ControlState {
 impl fmt::Display for ControlState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Search => write!(f, "Search (<Tab>/<Ctrl-E> to edit)"),
-            Self::Edit => write!(
+            Self::Search => write!(
                 f,
-                "Edit (<Enter> to confirm. <Tab> to switch. <Esc> to abort)"
+                "Tab (Cycle Right), k (Up), j (Down), a (Add), <Alt+D> (Delete), ? (Help)"
             ),
+            Self::Edit => write!(f, "k (Up), j (Down)"),
             Self::Gpt => write!(
                 f,
                 "Describe your command (<Enter> to confirm. <Esc> to abort)"
@@ -135,6 +142,13 @@ impl EditSelection {
             Self::Description => Self::Command,
         }
     }
+    pub const fn prev(&self) -> Self {
+        match self {
+            Self::Name | Self::Namespace | Self::Command => Self::Description,
+            Self::Tags => Self::Command,
+            Self::Description => Self::Tags,
+        }
+    }
     pub const fn edit_next(&self) -> Self {
         match self {
             Self::Command => Self::Namespace,
@@ -166,6 +180,7 @@ pub fn run(trove: &mut Trove, config: &HoardConfig) -> Result<Option<HoardCmd>> 
         should_exit: false,
         should_delete: false,
         draw: DrawState::Search,
+        vimode: ViMode::Normal,
         control: ControlState::Search,
         edit_selection: EditSelection::Command,
         new_command: None,

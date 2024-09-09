@@ -1,6 +1,6 @@
 use crate::core::parameters::Parameterized;
 use crate::core::HoardCmd;
-use crate::gui::commands_gui::{ControlState, DrawState, EditSelection, State};
+use crate::gui::commands_gui::{ControlState, DrawState, EditSelection, State, ViMode};
 use termion::event::Key;
 
 #[allow(clippy::too_many_lines)]
@@ -10,27 +10,33 @@ pub fn key_handler(
     trove_commands: &[HoardCmd],
     namespace_tabs: &[&str],
 ) -> Option<HoardCmd> {
-    match input {
-        Key::Esc | Key::Ctrl('c' | 'd' | 'g') => {
-            // Definitely exit program
+    match (&state.vimode, input) {
+        (ViMode::Insert, Key::Esc) => {
+            state.vimode = ViMode::Normal;
+            None
+        }
+        (ViMode::Normal, Key::Char('i')) => {
+            state.vimode = ViMode::Insert;
+            None
+        }
+        (ViMode::Normal, Key::Char('q')) => {
             state.control = ControlState::Search;
             state.should_exit = true;
             None
         }
-        // Show help
-        Key::F(1) => {
+        (ViMode::Normal, Key::Char('?')) => {
             state.draw = DrawState::Help;
             None
         }
-        // Show help
-        Key::Ctrl('w') => {
+        // Create Ctrl+W
+        (ViMode::Normal, Key::Char('a')) => {
             state.draw = DrawState::Create;
             state.edit_selection = EditSelection::Command;
             state.new_command = Some(HoardCmd::default());
             None
         }
-        // Enter GPT mode
-        Key::Ctrl('a') => {
+        // ChatGPT Mode (won't ever use this lol, no api key rip)
+        (ViMode::Normal, Key::Char('G')) => {
             // Same drawing state, only update how control works
             state.draw = DrawState::Search;
             if state.openai_key_set {
@@ -42,8 +48,9 @@ pub fn key_handler(
             state.new_command = Some(HoardCmd::default());
             None
         }
-        // Switch to edit command mode
-        Key::Ctrl('e') | Key::Char('\t') => {
+
+        // Switch to the right pane
+        (ViMode::Normal, Key::Char('l')) => {
             let selected_command = state
                 .commands
                 .clone()
@@ -60,23 +67,25 @@ pub fn key_handler(
             state.update_string_to_edit();
             None
         }
-        // Switch namespace
-        Key::Left | Key::Ctrl('h') => {
+
+        // Go one namespace to the left.
+        (ViMode::Normal, Key::Char('d')) => {
             if let Some(selected) = state.namespace_tab.selected() {
                 let new_selected_tab = previous_index(selected, namespace_tabs.len());
                 switch_namespace(state, new_selected_tab, namespace_tabs, trove_commands);
             }
             None
         }
-        Key::Right | Key::Ctrl('l') => {
+        // Go one namespace the right
+        (ViMode::Normal, Key::Char('u')) => {
             if let Some(selected) = state.namespace_tab.selected() {
                 let new_selected_tab = next_index(selected, namespace_tabs.len());
                 switch_namespace(state, new_selected_tab, namespace_tabs, trove_commands);
             }
             None
         }
-        // Switch command
-        Key::Up | Key::Ctrl('y' | 'p') => {
+        // Switch command up
+        (ViMode::Normal, Key::Char('k')) => {
             if !state.commands.is_empty() {
                 if let Some(selected) = state.command_list.selected() {
                     let new_selected = previous_index(selected, state.commands.len());
@@ -85,7 +94,7 @@ pub fn key_handler(
             }
             None
         }
-        Key::Down | Key::Ctrl('.' | 'n') => {
+        (ViMode::Normal, Key::Char('j')) => {
             if !state.commands.is_empty() {
                 if let Some(selected) = state.command_list.selected() {
                     let new_selected = next_index(selected, state.commands.len());
@@ -94,7 +103,7 @@ pub fn key_handler(
             }
             None
         }
-        Key::Ctrl('x') => {
+        (ViMode::Normal, Key::Alt('D')) => {
             if state.commands.is_empty() {
                 return None;
             }
@@ -112,8 +121,7 @@ pub fn key_handler(
             state.should_delete = true;
             Some(selected_command)
         }
-        // Select command
-        Key::Char('\n') => {
+        (_, Key::Char('\n')) => {
             if state.commands.is_empty() {
                 state.should_exit = true;
                 return None;
@@ -142,13 +150,12 @@ pub fn key_handler(
             }
             Some(selected_command)
         }
-        // Handle query input
-        Key::Backspace => {
+        (ViMode::Insert, Key::Backspace) => {
             state.input.pop();
             apply_filter(state, namespace_tabs, trove_commands);
             None
         }
-        Key::Char(c) => {
+        (ViMode::Insert, Key::Char(c)) => {
             state.input.push(c);
             apply_filter(state, namespace_tabs, trove_commands);
             None
@@ -157,7 +164,7 @@ pub fn key_handler(
     }
 }
 
-const fn next_index(current_index: usize, collection_length: usize) -> usize {
+pub const fn next_index(current_index: usize, collection_length: usize) -> usize {
     if current_index >= collection_length - 1 {
         0
     } else {
@@ -165,7 +172,7 @@ const fn next_index(current_index: usize, collection_length: usize) -> usize {
     }
 }
 
-const fn previous_index(current_index: usize, collection_length: usize) -> usize {
+pub const fn previous_index(current_index: usize, collection_length: usize) -> usize {
     if current_index > 0 {
         current_index - 1
     } else {
@@ -173,7 +180,7 @@ const fn previous_index(current_index: usize, collection_length: usize) -> usize
     }
 }
 
-fn switch_namespace(
+pub fn switch_namespace(
     state: &mut State,
     index_to_select: usize,
     namespaces: &[&str],
@@ -210,7 +217,9 @@ fn apply_search(state: &mut State, all_commands: &[HoardCmd], selected_tab: &str
         })
         .cloned()
         .collect();
-    state.commands.sort_by(|a, b| b.usage_count.cmp(&a.usage_count));
+    state
+        .commands
+        .sort_by(|a, b| b.usage_count.cmp(&a.usage_count));
 }
 
 fn apply_filter(state: &mut State, namespaces: &[&str], commands: &[HoardCmd]) {
@@ -227,6 +236,8 @@ fn apply_filter(state: &mut State, namespaces: &[&str], commands: &[HoardCmd]) {
 
 #[cfg(test)]
 mod test_controls {
+    use crate::gui::commands_gui::ViMode;
+
     use super::*;
     use ratatui::widgets::ListState;
 
@@ -249,6 +260,7 @@ mod test_controls {
             should_delete: false,
             draw: DrawState::Search,
             control: ControlState::Search,
+            vimode: ViMode::Normal,
             new_command: None,
             edit_selection: crate::gui::commands_gui::EditSelection::Command,
             string_to_edit: String::new(),
