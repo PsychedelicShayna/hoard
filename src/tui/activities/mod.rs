@@ -7,7 +7,6 @@ use std::sync::{Arc, Mutex};
 use anyhow as ah;
 use add_new_command::AddNewCommand;
 use command_browser::CommandBrowser;
-use crossbeam_channel::Sender;
 use keybind_help::KeybindHelp;
 use ratatui::{prelude::TermionBackend, Terminal};
 use termion::{event::Key, screen::AlternateScreen};

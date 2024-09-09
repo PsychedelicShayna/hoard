@@ -1,11 +1,10 @@
-use serde::{Deserialize, Serialize};
 use serde_json as sj;
 
 use std::collections::HashMap;
 use std::env;
 use std::fs::{self, File, OpenOptions};
-use std::io::{self, BufReader, BufWriter, Read, Write};
-use std::path::{Path, PathBuf};
+use std::io::{BufReader, BufWriter, Read, Write};
+use std::path::PathBuf;
 
 use super::models::Command;
 
@@ -44,7 +43,7 @@ impl CommandDatabase {
     }
 
     pub fn get_commands(&self) -> Vec<Command> {
-        self.commands.values().map(|c| c.clone()).collect()
+        self.commands.values().cloned().collect()
     }
 
     pub fn read(&mut self) -> ah::Result<()> {

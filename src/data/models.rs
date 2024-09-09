@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use serde_json as sj;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Command {

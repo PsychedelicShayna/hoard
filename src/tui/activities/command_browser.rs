@@ -1,7 +1,7 @@
 use crossbeam_channel::Sender;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph, Tabs, Wrap},
 };
@@ -228,7 +228,7 @@ impl Activity for CommandBrowser {
     fn on_key_press(&self, key: Key) {}
 
     fn draw(&mut self, terminal: &mut TermHandle) {
-        let namespace_tabs = vec!["All", "Default", "Personal", "Work"];
+        let namespace_tabs = ["All", "Default", "Personal", "Work"];
 
         terminal.draw(|rect| {
             let size = rect.size();
@@ -309,7 +309,7 @@ impl Activity for CommandBrowser {
             // Render the search bar widget.
             rect.render_widget(search_bar, chunks[2]);
 
-            let mut list_state = ListState::default();
+            let list_state = ListState::default();
 
             let (footer_constraint_left, footer_constraint_right) = match self.vimode {
                 ViMode::Normal => (50, 50),

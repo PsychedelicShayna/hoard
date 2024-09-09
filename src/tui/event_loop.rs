@@ -1,6 +1,5 @@
 use crossbeam_channel::{unbounded, Receiver, Sender};
-use eyre::Result;
-use ratatui::{backend::TermionBackend, widgets::ListState, Terminal};
+use ratatui::{backend::TermionBackend, Terminal};
 
 use termion::event::Key;
 use termion::input::TermRead;
@@ -12,7 +11,7 @@ use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
-use std::{fmt, sync::Mutex};
+use std::sync::Mutex;
 use termion::raw::IntoRawMode;
 use termion::screen::IntoAlternateScreen;
 
@@ -23,12 +22,10 @@ use crate::data::models::Command;
 use crate::data::storage::CommandDatabase;
 
 use crate::tui::{
-    self,
     activities::Activities,
     activities::Activity,
     activities::{
-        add_new_command, add_new_command::AddNewCommand, command_browser::CommandBrowser,
-        keybind_help,
+        add_new_command::AddNewCommand, command_browser::CommandBrowser,
     },
 };
 
@@ -60,6 +57,12 @@ pub struct EventLoop {
     join_handles: Vec<JoinHandle<()>>,
 
     command_database: CommandDatabase,
+}
+
+impl Default for EventLoop {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl EventLoop {
@@ -111,7 +114,7 @@ impl EventLoop {
                     if let Err(e) = tx.send(Event::KeyPressed(key)) {
                         eprintln!("Failed to send key event: {:?}", e);
                         break;
-                    } else if (kill_switch.load(SeqCst)) {
+                    } else if kill_switch.load(SeqCst) {
                         break;
                     }
                 }
@@ -126,7 +129,7 @@ impl EventLoop {
             self.join_handles.push(thread::spawn(move || loop {
                 if let Err(e) = tx.send(Event::Tick) {
                     eprintln!("Failed to send tick event: {:?}", e);
-                } else if (kill_switch.load(SeqCst)) {
+                } else if kill_switch.load(SeqCst) {
                     break;
                 }
 
