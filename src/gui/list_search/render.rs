@@ -1,7 +1,7 @@
 use crate::config::HoardConfig;
 use crate::core::HoardCmd;
-use crate::gui::commands_gui::State;
 use crate::gui::commands_gui::{ControlState, EditSelection};
+use crate::gui::commands_gui::{State, ViMode};
 use crate::gui::help::HELP_KEY;
 use ratatui::backend::TermionBackend;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
@@ -140,6 +140,10 @@ pub fn draw(
         if app_state.control == ControlState::Search {
             rect.render_widget(help_hint, footer_chunk[1]);
         }
+        let vi_mode = match &app_state.vimode {
+            ViMode::Normal => "Normal",
+            ViMode::Insert => "Insert",
+        };
 
         if app_state.query_gpt {
             let msg = if app_state.openai_key_set {
