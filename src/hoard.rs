@@ -1,5 +1,4 @@
 use crate::cli_commands::{Cli, Commands};
-use base64::engine::general_purpose;
 use clap::Parser;
 use dotenv::dotenv;
 use log::info;
@@ -7,18 +6,16 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use crate::cli_commands::Mode;
 use crate::config::HoardConfig;
-use crate::config::{load_or_build_config, save_hoard_config_file, save_parameter_token};
+use crate::config::{load_or_build_config, save_parameter_token};
 use crate::core::trove::Trove;
 use crate::core::HoardCmd;
 use crate::filter::query_trove;
 use crate::gui::commands_gui;
 use crate::gui::prompts::{
-    prompt_input, prompt_multiselect_options, prompt_password, prompt_password_repeat,
+    prompt_multiselect_options,
     prompt_yes_or_no, Confirmation,
 };
-use crate::util::rem_first_and_last;
 use base64::Engine as _;
 #[derive(Default, Debug)]
 pub struct Hoard {

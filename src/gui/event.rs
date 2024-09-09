@@ -12,7 +12,6 @@ pub enum Event<I> {
 
 /// A small event handler that wrap termion input and tick events. Each event
 /// type is handled in its own thread and returned to a common `Receiver`
-#[allow(dead_code)]
 pub struct Events {
     rx: crossbeam_channel::Receiver<Event<Key>>,
 }
@@ -31,10 +30,6 @@ impl Default for Config {
 }
 
 impl Events {
-    #[allow(dead_code)]
-    pub fn new() -> Self {
-        Self::with_config(Config::default())
-    }
 
     #[allow(clippy::manual_flatten)]
     pub fn with_config(config: Config) -> Self {

@@ -1,5 +1,5 @@
 // use crate::gui::theme::HoardTheme;
-use dialoguer::{Input, MultiSelect, Password, Select};
+use dialoguer::{Input, MultiSelect, Select};
 pub enum Confirmation {
     Yes,
     No,
@@ -90,20 +90,7 @@ where
     input.with_prompt(text).interact_text().unwrap()
 }
 
-pub fn prompt_password_repeat(text: &str) -> String {
-    Password::new()
-        .with_prompt(text)
-        .with_confirmation("Repeat password", "Error: the passwords don't match.")
-        .interact()
-        .unwrap()
-}
 
-pub fn prompt_password(text: &str) -> String {
-    Password::new()
-        .with_prompt(text)
-        .interact()
-        .unwrap()
-}
 
 fn take_elements_by_indices<T>(elements: &[T], indices: &[usize]) -> Vec<T>
 where

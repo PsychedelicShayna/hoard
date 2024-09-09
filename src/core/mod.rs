@@ -106,7 +106,6 @@ impl HoardCmd {
         }
     }
 
-    #[allow(dead_code)]
     /// set the name of the command
     pub fn with_name(self, name: &str) -> Self {
         Self {
@@ -123,7 +122,6 @@ impl HoardCmd {
         }
     }
 
-    #[allow(dead_code)]
     /// Set the description the command belongs to
     pub fn with_description(self, description: &str) -> Self {
         Self {
@@ -132,7 +130,6 @@ impl HoardCmd {
         }
     }
 
-    #[allow(dead_code)]
     /// set the tags of the command from a vector of strings
     pub fn with_tags(self, tags: Vec<String>) -> Self {
         Self { tags, ..self }
@@ -209,7 +206,6 @@ impl HoardCmd {
         tags
     }
 
-    #[allow(dead_code)]
     pub fn with_command_raw(self, command_string: &str) -> Self {
         Self {
             command: command_string.to_string(),
@@ -255,7 +251,6 @@ impl HoardCmd {
         }
     }
 
-    #[allow(dead_code)]
     /// set the namespace of the command
     pub fn with_namespace(self, namespace: &str) -> Self {
         Self {
@@ -382,7 +377,6 @@ impl HoardCmd {
         self.with_name_input_prompt(default_value, trove, "Name your command")
     }
 
-    #[allow(dead_code)]
     pub fn resolve_name_conflict_random(self) -> Self {
         let rng = rand::thread_rng();
         let random_string: String = rng
@@ -396,7 +390,6 @@ impl HoardCmd {
         }
     }
 
-    #[allow(dead_code)]
     /// Resolves a name conflict when a command should be added to a trove file.
     ///
     /// This function takes a command with a conflicting name and a reference to a trove. It prompts the user to resolve the conflict
@@ -467,33 +460,30 @@ impl HoardCmd {
             description: description_string,
             ..self
         }
-    } 
+    }
 
     pub fn mut_update_last_used(&mut self) {
         self.last_used = time::SystemTime::now();
     }
-    
+
     /// increase the usage count of the command
     pub fn mut_increase_usage_count(&mut self) -> &mut Self {
         self.usage_count += 1;
         self
     }
 
-    #[allow(dead_code)]
     /// sets the favorite flag of the command
     pub fn mut_set_favorite(&mut self, is_favorite: bool) -> &mut Self {
         self.is_favorite = is_favorite;
         self
     }
 
-    #[allow(dead_code)]
     /// sets the hidden flag of the command
     pub fn mut_set_hidden(&mut self, is_hidden: bool) -> &mut Self {
         self.is_hidden = is_hidden;
         self
     }
 
-    #[allow(dead_code)]
     /// sets the deleted flag of the command
     pub fn mut_set_deleted(&mut self, is_deleted: bool) -> &mut Self {
         self.is_deleted = is_deleted;

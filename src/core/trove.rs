@@ -86,20 +86,6 @@ impl Trove {
         trove
     }
 
-    /// Loads a trove collection from a string and tries to parse it to load it into memory
-    pub fn load_trove_from_string(trove_string: &str) -> Self {
-        let parsed_trove = serde_yaml::from_str::<Self>(trove_string);
-        let mut trove = match parsed_trove {
-            Ok(trove) => trove,
-            Err(e) => {
-                eprintln!("{e}");
-                eprintln!("The supplied trove file is invalid!");
-                Self::default()
-            }
-        };
-        trove.namespaces = trove.namespaces().into_iter().map(std::string::ToString::to_string).collect();
-        trove
-    }
 
     /// Serialize trove collection to yaml format and returns it as a string
     pub fn to_yaml(&self) -> String {

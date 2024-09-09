@@ -285,10 +285,6 @@ fn save_config(config_to_save: &HoardConfig, config_path: &Path) -> Result<(), E
     Ok(())
 }
 
-pub fn save_hoard_config_file(config_to_save: &HoardConfig, base_path: &Path) -> Result<(), Error> {
-    let config_dir = base_path.join(HOARD_CONFIG);
-    save_config(config_to_save, &config_dir)
-}
 
 #[cfg(test)]
 mod test_config {
