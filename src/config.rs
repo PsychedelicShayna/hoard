@@ -43,7 +43,7 @@ impl Default for HoardConfig {
             default_namespace: "default".to_string(),
             config_home_path: None,
             trove_path: None,
-            query_prefix: "  >".to_string(),
+            query_prefix: " > ".to_string(),
             primary_color: Some(Self::default_colors(0)),
             secondary_color: Some(Self::default_colors(1)),
             tertiary_color: Some(Self::default_colors(2)),
