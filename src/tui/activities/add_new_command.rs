@@ -28,7 +28,7 @@ impl Activity for AddNewCommand {
         );
     }
     fn draw(&mut self, terminal: &mut TermHandle) {}
-    fn signal_event_loop(&self, event: Event) -> ah::Result<()> {
+    fn signal_event_loop(&mut self, event: Event) -> ah::Result<()> {
         self.event_loop_sender_tx.send(event)?;
         Ok(())
     }

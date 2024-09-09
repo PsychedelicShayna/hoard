@@ -19,7 +19,7 @@ type TermHandle =
 pub trait Activity {
     fn on_key_press(&mut self, key: Key);
     fn draw(&mut self, terminal: &mut TermHandle);
-    fn signal_event_loop(&self, event: Event) -> ah::Result<()>;
+    fn signal_event_loop(&mut self, event: Event) -> ah::Result<()>;
 }
 
 pub enum Activities {
@@ -45,7 +45,7 @@ impl Activity for Activities {
         }
     }
 
-    fn signal_event_loop(&self, event: Event) -> ah::Result<()> {
+    fn signal_event_loop(&mut self, event: Event) -> ah::Result<()> {
         match self {
             Activities::AddNewCommand(activity) => activity.lock().unwrap().signal_event_loop(event),
             Activities::CommandBrowser(activity) => activity.lock().unwrap().signal_event_loop(event),

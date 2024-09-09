@@ -1,3 +1,4 @@
+use array_tool::vec::Join;
 use crossbeam_channel::Sender;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout},
@@ -117,10 +118,26 @@ impl CommandBrowser {
         let items: Vec<ListItem> = self
             .command_list
             .iter()
-            .map(|command| {
+            .enumerate()
+            .map(|(i, command)| {
+                let color = if self.selected_command_index == Some(i) {
+                    Color::Rgb(0, 255, 0)
+                } else {
+                    Color::Rgb(200, 200, 200)
+                };
+
+                let command_str = if matches!(self.vimode, ViMode::Insert)
+                    && matches!(self.selected_panel, SelectablePanel::CommandList)
+                    && self.selected_command_index == Some(i)
+                {
+                    self.insert_mode_buffer.clone() + IBEAM
+                } else {
+                    command.binary.clone()
+                };
+
                 ListItem::new(Line::from(vec![Span::styled(
-                    command.binary.clone(),
-                    Style::default(),
+                    command_str,
+                    Style::default().fg(color),
                 )]))
             })
             .collect();
@@ -162,16 +179,17 @@ impl CommandBrowser {
                 )
         });
 
-        let mut tags_str: String = selected_command
-            .map(|command| command.tags.join(", "))
-            .unwrap_or_default();
+        let tags_selected = matches!(self.selected_panel, SelectablePanel::CommandTags);
 
-        // Only add a cursor to the tags string when in insert mode.
-        if matches!(self.vimode, ViMode::Insert) && matches!(self.selected_panel, SelectablePanel::CommandTags){
-            tags_str.push_str(IBEAM);
-        }
+        let tags_str = if matches!(self.vimode, ViMode::Insert) && tags_selected {
+            self.insert_mode_buffer.clone() + IBEAM
+        } else {
+            selected_command
+                .map(|command| command.tags.join(", "))
+                .unwrap_or_default()
+        };
 
-        let tags_widget_color = if let SelectablePanel::CommandTags = self.selected_panel {
+        let tags_widget_color = if tags_selected {
             Color::Rgb(0, 255, 0)
         } else {
             Color::Rgb(200, 200, 200)
@@ -190,15 +208,15 @@ impl CommandBrowser {
                     .border_type(BorderType::Plain),
             );
 
-        // The same goes for the description paragraph.
-        let mut description_str: String = selected_command
-            .map(|command| command.description.clone())
-            .unwrap_or_default();
-
-        // Only add a cursor to the description string when in insert mode.
-        if matches!(self.vimode, ViMode::Insert) && matches!(self.selected_panel, SelectablePanel::CommandDescription) {
-            description_str.push_str(IBEAM);
-        }
+        let description_str: String = if matches!(self.vimode, ViMode::Insert)
+            && matches!(self.selected_panel, SelectablePanel::CommandDescription)
+        {
+            self.insert_mode_buffer.clone() + IBEAM
+        } else {
+            selected_command
+                .map(|command| command.description.clone())
+                .unwrap_or_default()
+        };
 
         let description_widget_color =
             if let SelectablePanel::CommandDescription = self.selected_panel {
@@ -222,9 +240,11 @@ impl CommandBrowser {
         let mut search_bar_string = format!(" > {}", self.search_filter);
 
         // Only add a cursor to the search bar string when in insert mode.
-        if matches!(self.vimode, ViMode::Insert) && matches!(self.selected_panel, SelectablePanel::CommandList){
-            search_bar_string.push_str(IBEAM);
-        }
+        // if matches!(self.vimode, ViMode::Insert)
+        //     && matches!(self.selected_panel, SelectablePanel::CommandList)
+        // {
+        //     search_bar_string.push_str(IBEAM);
+        // }
 
         let search_bar_widget = Paragraph::new(search_bar_string).block(
             Block::default()
@@ -247,26 +267,102 @@ impl Activity for CommandBrowser {
     fn on_key_press(&mut self, key: Key) {
         if let ViMode::Insert = self.vimode {
             match key {
-                Key::Char(c) => {
-                    self.insert_mode_buffer.push(c);
-                }
                 Key::Backspace => {
                     self.insert_mode_buffer.pop();
                 }
+                Key::Char('\n') => {
+                    match self.selected_panel {
+                        SelectablePanel::CommandTags => {
+                            if let Some(index) = self.selected_command_index {
+                                if let Some(command) = self.command_list.get_mut(index) {
+                                    command.tags = self
+                                        .insert_mode_buffer
+                                        .split(',')
+                                        .map(|s| s.trim().to_string())
+                                        .collect();
+                                    let updated_command = command.clone();
+                                    self.signal_event_loop(Event::DatabaseUpdate(updated_command));
+                                }
+                            }
+                        }
+                        SelectablePanel::CommandDescription => {
+                            if let Some(index) = self.selected_command_index {
+                                if let Some(command) = self.command_list.get_mut(index) {
+                                    command.description = self.insert_mode_buffer.clone();
+                                    let updated_command = command.clone();
+                                    self.signal_event_loop(Event::DatabaseUpdate(updated_command));
+                                }
+                            }
+                        }
+                        SelectablePanel::CommandList => {
+                            if let Some(index) = self.selected_command_index {
+                                if let Some(command) = self.command_list.get_mut(index) {
+                                    command.binary = self.insert_mode_buffer.clone();
+                                    let updated_command = command.clone();
+                                    self.signal_event_loop(Event::DatabaseUpdate(updated_command));
+                                }
+                            }
+
+                        }
+                        _ => {}
+                    }
+                    self.vimode = ViMode::Normal;
+                    self.insert_mode_buffer.clear();
+                }
                 Key::Esc => {
                     self.vimode = ViMode::Normal;
+                }
+                Key::Char(c) => {
+                    self.insert_mode_buffer.push(c);
                 }
                 _ => {}
             }
         } else {
             match key {
+                Key::Char('a') => {
+                    self.command_list.push(Command {
+                        binary: "new command".to_string(),
+                        description: "new command description".to_string(),
+                        tags: vec!["new".to_string(), "command".to_string()],
+                        invocations: vec![],
+                    });
+                }
                 Key::Char('i') => {
                     self.vimode = ViMode::Insert;
+
+                    match (
+                        self.selected_command_index
+                            .and_then(|i| self.command_list.get(i)),
+                        &self.selected_panel,
+                    ) {
+                        (Some(command), SelectablePanel::CommandList) => {
+                            self.insert_mode_buffer = command.binary.clone()
+                        }
+                        (Some(command), SelectablePanel::CommandTags) => {
+                            self.insert_mode_buffer = command.tags.join(", ");
+                        }
+                        (Some(command), SelectablePanel::CommandDescription) => {
+                            self.insert_mode_buffer = command.description.clone()
+                        }
+                        (_, SelectablePanel::CommandInvocations) => todo!(),
+
+                        _ => todo!(),
+                    }
                 }
 
                 Key::Char('k') => match self.selected_panel {
                     SelectablePanel::CommandDescription => {
                         self.selected_panel = SelectablePanel::CommandTags;
+                    }
+
+                    SelectablePanel::CommandList => {
+                        if let Some(index) = self.selected_command_index {
+                            if index > 0 {
+                                self.selected_command_index = Some(index - 1);
+                            }
+                        } else if self.command_list.len() > 0 {
+                            self.selected_command_index = Some(0);
+                        }
                     }
                     _ => {}
                 },
@@ -274,6 +370,18 @@ impl Activity for CommandBrowser {
                 Key::Char('j') => match self.selected_panel {
                     SelectablePanel::CommandTags => {
                         self.selected_panel = SelectablePanel::CommandDescription;
+                    }
+
+                    SelectablePanel::CommandList => {
+                        if let Some(index) = self.selected_command_index {
+                            if index < self.command_list.len() - 1 {
+                                self.selected_command_index = Some(index + 1);
+                            }
+                        } else if self.command_list.len() > 0 {
+                            self.selected_command_index = Some(0);
+                        } else {
+                            self.selected_command_index = None;
+                        }
                     }
                     _ => {}
                 },
@@ -408,7 +516,7 @@ impl Activity for CommandBrowser {
         });
     }
 
-    fn signal_event_loop(&self, event: Event) -> ah::Result<()> {
+    fn signal_event_loop(&mut self, event: Event) -> ah::Result<()> {
         self.event_loop_sender_tx.send(event)?;
         Ok(())
     }
