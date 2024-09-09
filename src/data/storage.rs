@@ -11,8 +11,8 @@ use super::models::Command;
 use anyhow as ah;
 
 pub struct CommandDatabase {
-    file_path: String,
-    commands: HashMap<String, Command>,
+    pub file_path: String,
+    pub commands: HashMap<String, Command>,
 }
 
 // An in-memory representation of the stored commands.
@@ -51,6 +51,12 @@ impl CommandDatabase {
         let reader = BufReader::new(file);
         let commands: HashMap<String, Command> = sj::from_reader(reader)?;
         self.commands = commands;
+        Ok(())
+    }
+
+    pub fn delete(&mut self, command: Command) -> ah::Result<()> {
+        self.commands.remove(&command.binary);
+        self.write()?;
         Ok(())
     }
 

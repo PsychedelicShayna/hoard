@@ -32,6 +32,7 @@ use crate::tui::{
 pub enum Event {
     KeyPressed(Key),
     DatabaseUpdate(Command),
+    DatabaseDelete(Command),
     Tick,
 }
 
@@ -159,6 +160,9 @@ impl EventLoop {
                     }
                     Event::DatabaseUpdate(command) => {
                         self.command_database.update(command);
+                    }
+                    Event::DatabaseDelete(command) => {
+                        self.command_database.delete(command);
                     }
                     _ => continue,
                 }

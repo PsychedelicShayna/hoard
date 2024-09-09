@@ -29,10 +29,6 @@ pub enum SelectablePanel {
     /// The middle section of the right panel, containing the description of
     /// the selected command.
     CommandDescription,
-
-    /// Bottom section of the right panel, containing a list of different
-    /// stored ways to invoke the command with different arguments.
-    CommandInvocations,
 }
 
 #[derive(Clone, Debug)]
@@ -43,15 +39,9 @@ pub enum ViMode {
     /// Solely for editing the text of a selected, editable panel.
     /// There are no keybinds during insert mode other than leaving it.
     Insert,
-}
 
-impl ViMode {
-    pub fn toggle(&mut self) {
-        match self {
-            ViMode::Normal => *self = ViMode::Insert,
-            ViMode::Insert => *self = ViMode::Normal,
-        }
-    }
+    /// When accessing the search bar to filter entries.
+    Search,
 }
 
 impl From<ViMode> for String {
@@ -59,6 +49,7 @@ impl From<ViMode> for String {
         match mode {
             ViMode::Normal => "Normal".to_string(),
             ViMode::Insert => "Insert".to_string(),
+            ViMode::Search => "Search".to_string(),
         }
     }
 }
@@ -71,7 +62,7 @@ pub struct CommandBrowser {
     selected_panel: SelectablePanel,
     vimode: ViMode,
     search_filter: String,
-
+    command_list_visible: Vec<Command>,
     /// When in insert mode, this holds a copy of the text being edited,
     /// and is written back to where the copy was made from upon leaving.
     insert_mode_buffer: String,
@@ -90,7 +81,8 @@ impl CommandBrowser {
         Self {
             event_loop_sender_tx,
             selected_command_index: None,
-            command_list: commands,
+            command_list: commands.clone(),
+            command_list_visible: commands,
             selected_panel: SelectablePanel::CommandList,
             vimode: ViMode::Normal,
             command_list_state: ListState::default(),
@@ -101,7 +93,9 @@ impl CommandBrowser {
 
     /// Generates selectable panels that can be cycled between and edited.
     pub fn generate_panels<'a>(&mut self) -> CommandBrowserWidgets<'a> {
-        let list_area_color = if let SelectablePanel::CommandList = self.selected_panel {
+        let list_area_color = if matches!(self.selected_panel, SelectablePanel::CommandList)
+            && matches!(self.vimode, ViMode::Normal | ViMode::Insert)
+        {
             Color::Rgb(0, 255, 0)
         } else {
             Color::Rgb(200, 200, 200)
@@ -114,12 +108,40 @@ impl CommandBrowser {
             .title(" Commands ")
             .border_type(BorderType::Plain);
 
+        if !self.search_filter.is_empty() {
+            self.command_list_visible = self
+                .command_list
+                .clone()
+                .into_iter()
+                .filter(|command| {
+                    let binary = &command.binary;
+                    let tags = &command.tags;
+
+                    if binary.contains(&self.search_filter) {
+                        return true;
+                    }
+
+                    for tag in tags {
+                        if tag.contains(&self.search_filter) {
+                            return true;
+                        }
+                    }
+
+                    false
+                })
+                .collect();
+
+            for command in &self.command_list {}
+        } else if self.command_list_visible.len() != self.command_list.len() {
+            self.command_list_visible = self.command_list.clone();
+        }
+
         // Maps the internally stored command list into drawable ListItems.
         let items: Vec<ListItem> = self
-            .command_list
+            .command_list_visible
             .iter()
             .enumerate()
-            .map(|(i, command)| {
+            .filter_map(|(i, command)| {
                 let color = if self.selected_command_index == Some(i) {
                     Color::Rgb(0, 255, 0)
                 } else {
@@ -135,17 +157,17 @@ impl CommandBrowser {
                     command.binary.clone()
                 };
 
-                ListItem::new(Line::from(vec![Span::styled(
+                Some(ListItem::new(Line::from(vec![Span::styled(
                     command_str,
                     Style::default().fg(color),
-                )]))
+                )])))
             })
             .collect();
 
         if self
             .selected_command_index
-            .is_some_and(|i| i >= self.command_list.len())
-            || self.command_list.is_empty()
+            .is_some_and(|i| i >= self.command_list_visible.len())
+            || self.command_list_visible.is_empty()
         {
             self.selected_command_index = None;
         }
@@ -153,7 +175,7 @@ impl CommandBrowser {
         // If somehow the index became an invalid Some value, reset it to None.
         let selected_command: Option<&Command> = self
             .selected_command_index
-            .and_then(|i| self.command_list.get(i));
+            .and_then(|i| self.command_list_visible.get(i));
 
         let list_widget = List::new(items)
             .block(list_area)
@@ -161,7 +183,7 @@ impl CommandBrowser {
 
         let selected_command: Option<&Command> = self
             .selected_command_index
-            .and_then(|i| self.command_list.get(i));
+            .and_then(|i| self.command_list_visible.get(i));
 
         // If no command is selected, there is no item in the list widget for
         // which the paragraph applies to, so it must be an Option.
@@ -189,11 +211,12 @@ impl CommandBrowser {
                 .unwrap_or_default()
         };
 
-        let tags_widget_color = if tags_selected {
-            Color::Rgb(0, 255, 0)
-        } else {
-            Color::Rgb(200, 200, 200)
-        };
+        let tags_widget_color =
+            if tags_selected && matches!(self.vimode, ViMode::Normal | ViMode::Insert) {
+                Color::Rgb(0, 255, 0)
+            } else {
+                Color::Rgb(200, 200, 200)
+            };
 
         // Unlike the list widget, the paragraph where the tags are supposed
         // to go can be empty, as it's not part of a list widget.
@@ -219,7 +242,9 @@ impl CommandBrowser {
         };
 
         let description_widget_color =
-            if let SelectablePanel::CommandDescription = self.selected_panel {
+            if matches!(self.selected_panel, SelectablePanel::CommandDescription)
+                && matches!(self.vimode, ViMode::Normal | ViMode::Insert)
+            {
                 Color::Rgb(0, 255, 0)
             } else {
                 Color::Rgb(200, 200, 200)
@@ -239,16 +264,19 @@ impl CommandBrowser {
 
         let mut search_bar_string = format!(" > {}", self.search_filter);
 
-        // Only add a cursor to the search bar string when in insert mode.
-        // if matches!(self.vimode, ViMode::Insert)
-        //     && matches!(self.selected_panel, SelectablePanel::CommandList)
-        // {
-        //     search_bar_string.push_str(IBEAM);
-        // }
+        if matches!(self.vimode, ViMode::Search) {
+            search_bar_string.push_str(IBEAM);
+        }
+
+        let search_bar_widget_color = if let ViMode::Search = self.vimode {
+            Color::Rgb(0, 255, 0)
+        } else {
+            Color::Rgb(200, 200, 200)
+        };
 
         let search_bar_widget = Paragraph::new(search_bar_string).block(
             Block::default()
-                .style(Style::default())
+                .style(Style::default().fg(search_bar_widget_color))
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded),
         );
@@ -263,143 +291,187 @@ impl CommandBrowser {
     }
 }
 
+impl CommandBrowser {
+    // [n:i] -> Insert mode for the selected panel.
+    fn normal_insert(&mut self) {
+        self.selected_command_index
+            .and_then(|i| (i < self.command_list_visible.len()).then_some(i))
+            .and_then(|i| self.command_list_visible.get(i))
+            .map(|command| match self.selected_panel {
+                SelectablePanel::CommandList => command.binary.clone(),
+                SelectablePanel::CommandTags => command.tags.join(", "),
+                SelectablePanel::CommandDescription => command.description.clone(),
+            })
+            .map(|s| self.insert_mode_buffer = s)
+            .map(|_| self.vimode = ViMode::Insert);
+    }
+
+    // [n:d] -> Delete the selected command.
+    fn normal_delete(&mut self) {
+        self.selected_command_index
+            .and_then(|i| (i < self.command_list_visible.len()).then_some(i))
+            .map(|i| self.command_list_visible.remove(i))
+            .map(|command| {
+                self.command_list.retain(|c| c.guid != command.guid);
+                self.signal_event_loop(Event::DatabaseDelete(command));
+            });
+    }
+
+    fn insert_return(&mut self) {
+        self.selected_command_index
+            .and_then(|i| self.command_list_visible.get_mut(i))
+            .map(|command| {
+                match self.selected_panel {
+                    SelectablePanel::CommandTags => {
+                        command.tags = self
+                            .insert_mode_buffer
+                            .split(',')
+                            .map(|s| s.trim().to_string())
+                            .collect();
+                        command
+                    }
+                    SelectablePanel::CommandDescription => {
+                        command.description = self.insert_mode_buffer.clone();
+                        command
+                    }
+                    SelectablePanel::CommandList => {
+                        command.binary = self.insert_mode_buffer.clone();
+                        command
+                    }
+                }
+                .clone()
+            })
+            .map(|updated_command| self.signal_event_loop(Event::DatabaseUpdate(updated_command)));
+
+        self.vimode = ViMode::Normal;
+        self.insert_mode_buffer.clear();
+    }
+
+    fn normal_add(&mut self) {
+        let command = Command {
+            binary: "new command".to_string(),
+            description: "new command description".to_string(),
+            tags: vec!["new".to_string(), "command".to_string()],
+            invocations: vec![],
+            guid: Command::generate_guid(),
+        };
+
+        self.command_list.push(command.clone());
+        self.signal_event_loop(Event::DatabaseUpdate(command));
+    }
+
+    fn normal_navigate_up(&mut self) {
+        match self.selected_panel {
+            SelectablePanel::CommandDescription => {
+                self.selected_panel = SelectablePanel::CommandTags;
+            }
+
+            SelectablePanel::CommandList => {
+                if let Some(index) = self.selected_command_index {
+                    if index > 0 {
+                        self.selected_command_index = Some(index - 1);
+                    }
+                } else if self.command_list_visible.len() > 0 {
+                    self.selected_command_index = Some(0);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn normal_navigate_down(&mut self) {
+        match self.selected_panel {
+            SelectablePanel::CommandTags => {
+                self.selected_panel = SelectablePanel::CommandDescription;
+            }
+
+            SelectablePanel::CommandList => {
+                if let Some(index) = self.selected_command_index {
+                    if index < self.command_list_visible.len() - 1 {
+                        self.selected_command_index = Some(index + 1);
+                    }
+                } else if self.command_list_visible.len() > 0 {
+                    self.selected_command_index = Some(0);
+                } else {
+                    self.selected_command_index = None;
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn normal_navigate_left(&mut self) {
+        match self.selected_panel {
+            SelectablePanel::CommandDescription | SelectablePanel::CommandTags => {
+                self.selected_panel = SelectablePanel::CommandList;
+            }
+            _ => {}
+        }
+    }
+
+    fn normal_navigate_right(&mut self) {
+        match self.selected_panel {
+            SelectablePanel::CommandList => {
+                self.selected_panel = SelectablePanel::CommandDescription;
+            }
+            _ => {}
+        }
+    }
+
+    fn normal_search(&mut self) {
+        self.vimode = ViMode::Search;
+    }
+
+    fn search_return(&mut self) {
+        self.vimode = ViMode::Normal;
+    }
+
+    fn search_pop(&mut self) {
+        self.search_filter.pop();
+    }
+
+    fn search_push(&mut self, c: char) {
+        self.search_filter.push(c);
+    }
+
+    fn search_escape(&mut self) {
+        self.search_filter.clear();
+        self.vimode = ViMode::Normal;
+    }
+
+    fn insert_push(&mut self, c: char) {
+        self.insert_mode_buffer.push(c);
+    }
+
+    fn insert_pop(&mut self) {
+        self.insert_mode_buffer.pop();
+    }
+
+    fn insert_escape(&mut self) {
+        self.vimode = ViMode::Normal;
+    }
+}
+
 impl Activity for CommandBrowser {
     fn on_key_press(&mut self, key: Key) {
-        if let ViMode::Insert = self.vimode {
-            match key {
-                Key::Backspace => {
-                    self.insert_mode_buffer.pop();
-                }
-                Key::Char('\n') => {
-                    match self.selected_panel {
-                        SelectablePanel::CommandTags => {
-                            if let Some(index) = self.selected_command_index {
-                                if let Some(command) = self.command_list.get_mut(index) {
-                                    command.tags = self
-                                        .insert_mode_buffer
-                                        .split(',')
-                                        .map(|s| s.trim().to_string())
-                                        .collect();
-                                    let updated_command = command.clone();
-                                    self.signal_event_loop(Event::DatabaseUpdate(updated_command));
-                                }
-                            }
-                        }
-                        SelectablePanel::CommandDescription => {
-                            if let Some(index) = self.selected_command_index {
-                                if let Some(command) = self.command_list.get_mut(index) {
-                                    command.description = self.insert_mode_buffer.clone();
-                                    let updated_command = command.clone();
-                                    self.signal_event_loop(Event::DatabaseUpdate(updated_command));
-                                }
-                            }
-                        }
-                        SelectablePanel::CommandList => {
-                            if let Some(index) = self.selected_command_index {
-                                if let Some(command) = self.command_list.get_mut(index) {
-                                    command.binary = self.insert_mode_buffer.clone();
-                                    let updated_command = command.clone();
-                                    self.signal_event_loop(Event::DatabaseUpdate(updated_command));
-                                }
-                            }
-
-                        }
-                        _ => {}
-                    }
-                    self.vimode = ViMode::Normal;
-                    self.insert_mode_buffer.clear();
-                }
-                Key::Esc => {
-                    self.vimode = ViMode::Normal;
-                }
-                Key::Char(c) => {
-                    self.insert_mode_buffer.push(c);
-                }
-                _ => {}
-            }
-        } else {
-            match key {
-                Key::Char('a') => {
-                    self.command_list.push(Command {
-                        binary: "new command".to_string(),
-                        description: "new command description".to_string(),
-                        tags: vec!["new".to_string(), "command".to_string()],
-                        invocations: vec![],
-                    });
-                }
-                Key::Char('i') => {
-                    self.vimode = ViMode::Insert;
-
-                    match (
-                        self.selected_command_index
-                            .and_then(|i| self.command_list.get(i)),
-                        &self.selected_panel,
-                    ) {
-                        (Some(command), SelectablePanel::CommandList) => {
-                            self.insert_mode_buffer = command.binary.clone()
-                        }
-                        (Some(command), SelectablePanel::CommandTags) => {
-                            self.insert_mode_buffer = command.tags.join(", ");
-                        }
-                        (Some(command), SelectablePanel::CommandDescription) => {
-                            self.insert_mode_buffer = command.description.clone()
-                        }
-                        (_, SelectablePanel::CommandInvocations) => todo!(),
-
-                        _ => todo!(),
-                    }
-                }
-
-                Key::Char('k') => match self.selected_panel {
-                    SelectablePanel::CommandDescription => {
-                        self.selected_panel = SelectablePanel::CommandTags;
-                    }
-
-                    SelectablePanel::CommandList => {
-                        if let Some(index) = self.selected_command_index {
-                            if index > 0 {
-                                self.selected_command_index = Some(index - 1);
-                            }
-                        } else if self.command_list.len() > 0 {
-                            self.selected_command_index = Some(0);
-                        }
-                    }
-                    _ => {}
-                },
-
-                Key::Char('j') => match self.selected_panel {
-                    SelectablePanel::CommandTags => {
-                        self.selected_panel = SelectablePanel::CommandDescription;
-                    }
-
-                    SelectablePanel::CommandList => {
-                        if let Some(index) = self.selected_command_index {
-                            if index < self.command_list.len() - 1 {
-                                self.selected_command_index = Some(index + 1);
-                            }
-                        } else if self.command_list.len() > 0 {
-                            self.selected_command_index = Some(0);
-                        } else {
-                            self.selected_command_index = None;
-                        }
-                    }
-                    _ => {}
-                },
-
-                Key::Char('h') => match self.selected_panel {
-                    SelectablePanel::CommandDescription | SelectablePanel::CommandTags => {
-                        self.selected_panel = SelectablePanel::CommandList;
-                    }
-                    _ => {}
-                },
-                Key::Char('l') => match self.selected_panel {
-                    SelectablePanel::CommandList => {
-                        self.selected_panel = SelectablePanel::CommandDescription;
-                    }
-                    _ => {}
-                },
-                _ => {}
-            }
+        match (&self.vimode, key) {
+            (ViMode::Normal, Key::Char('i')) => self.normal_insert(),
+            (ViMode::Normal, Key::Char('d')) => self.normal_delete(),
+            (ViMode::Insert, Key::Backspace) => self.insert_pop(),
+            (ViMode::Insert, Key::Char('\n')) => self.insert_return(),
+            (ViMode::Insert, Key::Esc) => self.insert_escape(),
+            (ViMode::Insert, Key::Char(c)) => self.insert_push(c),
+            (ViMode::Normal, Key::Char('a')) => self.normal_add(),
+            (ViMode::Normal, Key::Char('k')) => self.normal_navigate_up(),
+            (ViMode::Normal, Key::Char('j')) => self.normal_navigate_down(),
+            (ViMode::Normal, Key::Char('h')) => self.normal_navigate_left(),
+            (ViMode::Normal, Key::Char('l')) => self.normal_navigate_right(),
+            (ViMode::Normal, Key::Char('/')) => self.normal_search(),
+            (ViMode::Search, Key::Char('\n')) => self.search_return(),
+            (ViMode::Search, Key::Esc) => self.search_escape(),
+            (ViMode::Search, Key::Backspace) => self.search_pop(),
+            (ViMode::Search, Key::Char(c)) => self.search_push(c),
+            _ => {}
         }
     }
 
@@ -489,7 +561,8 @@ impl Activity for CommandBrowser {
 
             let (footer_constraint_left, footer_constraint_right) = match self.vimode {
                 ViMode::Normal => (50, 50),
-                ViMode::Insert => (99, 1),
+                ViMode::Insert => (50, 50),
+                ViMode::Search => (99, 1),
             };
 
             let footer_chunk = Layout::default()
