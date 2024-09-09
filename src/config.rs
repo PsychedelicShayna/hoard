@@ -130,10 +130,10 @@ impl HoardConfig {
     }
 }
 
-/// Loads hoard config file at $HOME/.hoard/config.yml.
-/// if `hoard_home_path` is set, try to read it from that custom path
-///
-/// If no `hoard_home_path` is found, a new config.yml will be created at the specified path
+// Loads hoard config file at $HOME/.hoard/config.yml.
+// if `hoard_home_path` is set, try to read it from that custom path
+//
+// If no `hoard_home_path` is found, a new config.yml will be created at the specified path
 #[allow(clippy::module_name_repetitions)]
 pub fn load_or_build_config(hoard_home_path: Option<String>) -> Result<HoardConfig> {
     // First check if custom path should be used
@@ -178,9 +178,11 @@ fn load_or_build(path: &Path) -> Result<HoardConfig, Error> {
         )?;
 
         let path_buf = Path::new(HOARD_FILE).to_path_buf();
+
         if loaded_config.read_from_current_directory.unwrap() && path_buf.exists() {
             loaded_config.trove_path = Some(path_buf);
         }
+
         // Sanity check. If the config makes sense
         assert!(loaded_config.parameter_token != loaded_config.parameter_ending_token, "Your parameter token {} is equal to your ending token {}. Please set one of them to another character!", loaded_config.parameter_token.as_ref().unwrap(), loaded_config.parameter_ending_token.as_ref().unwrap());
 

@@ -84,10 +84,12 @@ pub fn draw(
 
         rect.render_widget(tabs, chunks[0]);
 
+        // This is it
         let commands_chunks = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([Constraint::Percentage(30), Constraint::Percentage(70)].as_ref())
             .split(chunks[1]);
+
         let command_detail_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints(
@@ -99,6 +101,7 @@ pub fn draw(
                 .as_ref(),
             )
             .split(commands_chunks[1]);
+
         let (commands, command, tags_widget, description, input) =
             render_commands(&app_state.commands.clone(), app_state, config);
 
@@ -110,6 +113,7 @@ pub fn draw(
         rect.render_widget(input, chunks[2]);
 
         let (footer_left, footer_right) = get_footer_constraints(&app_state.control);
+
         let footer_chunk = Layout::default()
             .direction(Direction::Horizontal)
             .margin(0)
@@ -120,6 +124,7 @@ pub fn draw(
             .split(chunks[3]);
 
         let control_str = &app_state.control;
+
         let help_hint_l = Paragraph::new(format!("{control_str}"))
             .style(Style::default().fg(Color::Rgb(
                 config.primary_color.unwrap().0,
@@ -133,67 +138,11 @@ pub fn draw(
             ViMode::Insert => "Insert",
         };
 
-        if app_state.query_gpt {
-            let msg = if app_state.openai_key_set {
-                State::get_default_popupmsg()
-            } else {
-                State::get_no_api_key_popupmsg()
-            };
-            let description = Paragraph::new(msg)
-                .style(Style::default().fg(Color::Rgb(
-                    config.primary_color.unwrap().0,
-                    config.primary_color.unwrap().1,
-                    config.primary_color.unwrap().2,
-                )))
-                .alignment(Alignment::Center)
-                .wrap(Wrap { trim: true })
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .style(Style::default().fg(get_color(
-                            app_state,
-                            config,
-                            &EditSelection::Description,
-                        )))
-                        .title("GPT")
-                        .border_type(BorderType::Plain),
-                );
-            let area = centered_rect(50, 10, size);
-            rect.render_widget(Clear, area); //this clears out the background
-            rect.render_widget(description, area);
-        }
         let help_hint = Paragraph::new(format!("[{}] ", vi_mode)).alignment(Alignment::Left);
         rect.render_widget(help_hint, footer_chunk[0]);
         rect.render_widget(help_hint_l, footer_chunk[1]);
     })?;
     Ok(())
-}
-
-/// helper function to create a centered rect using up certain percentage of the available rect `r`
-fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
-    let popup_layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints(
-            [
-                Constraint::Percentage((100 - percent_y) / 2),
-                Constraint::Percentage(percent_y),
-                Constraint::Percentage((100 - percent_y) / 2),
-            ]
-            .as_ref(),
-        )
-        .split(r);
-
-    Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints(
-            [
-                Constraint::Percentage((100 - percent_x) / 2),
-                Constraint::Percentage(percent_x),
-                Constraint::Percentage((100 - percent_x) / 2),
-            ]
-            .as_ref(),
-        )
-        .split(popup_layout[1])[1]
 }
 
 fn get_color(
@@ -211,12 +160,14 @@ fn get_color(
         config.primary_color.unwrap().1,
         config.primary_color.unwrap().2,
     );
+
     match app.control {
         ControlState::Search | ControlState::Gpt | ControlState::KeyNotSet => normal,
         ControlState::Edit => {
             if command_render == &app.edit_selection {
                 return highlighted;
             }
+
             normal
         }
     }
@@ -366,14 +317,18 @@ fn render_commands<'a>(
     };
 
     let mut query_string = config.query_prefix.clone() + " ";
+
     query_string.push_str(&app.input.clone()[..]);
+
     if matches!(app.control, ControlState::Search) && matches!(app.vimode, ViMode::Insert) {
         query_string.push_str(IBEAM);
     }
+
     let color = match app.control {
         ControlState::Search if matches!(app.vimode, ViMode::Insert) => highlighted,
         _ => normal,
     };
+
     let input = Paragraph::new(query_string).block(
         Block::default()
             .style(Style::default().fg(color))
@@ -389,4 +344,31 @@ const fn get_footer_constraints(control: &ControlState) -> (u16, u16) {
         ControlState::Search | ControlState::Gpt | ControlState::KeyNotSet => (50, 50),
         ControlState::Edit => (99, 1),
     }
+}
+
+/// helper function to create a centered rect using up certain percentage of the available rect `r`
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(
+            [
+                Constraint::Percentage((100 - percent_y) / 2),
+                Constraint::Percentage(percent_y),
+                Constraint::Percentage((100 - percent_y) / 2),
+            ]
+            .as_ref(),
+        )
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(
+            [
+                Constraint::Percentage((100 - percent_x) / 2),
+                Constraint::Percentage(percent_x),
+                Constraint::Percentage((100 - percent_x) / 2),
+            ]
+            .as_ref(),
+        )
+        .split(popup_layout[1])[1]
 }

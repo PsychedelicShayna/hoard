@@ -42,8 +42,10 @@ impl Events {
 
         {
             let tx = tx.clone();
+
             thread::spawn(move || {
                 let tty = termion::get_tty().expect("Could not find tty session");
+
                 for key in tty.keys().flatten() {
                     if let Err(err) = tx.send(Event::Input(key)) {
                         eprintln!("{err}");
@@ -58,8 +60,10 @@ impl Events {
                 eprintln!("{err}");
                 break;
             }
+
             thread::sleep(config.tick_rate);
         });
+
         Self { rx }
     }
 

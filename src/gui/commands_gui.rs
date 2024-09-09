@@ -50,8 +50,10 @@ impl State {
     pub fn update_string_to_edit(&mut self) -> &mut Self {
         let selected_idx = self.command_list.selected().unwrap();
         let cloned_selected_command = self.commands.get(selected_idx).unwrap().clone();
+
         match self.edit_selection {
             EditSelection::Name => self.string_to_edit = cloned_selected_command.name,
+
             EditSelection::Tags => {
                 self.string_to_edit = cloned_selected_command.get_tags_as_string();
             }
@@ -187,7 +189,6 @@ pub fn run(trove: &mut Trove, config: &HoardConfig) -> Result<Option<HoardCmd>> 
         string_to_edit: String::new(),
         parameter_token: config.parameter_token.as_ref().unwrap().clone(),
         parameter_ending_token: config.parameter_ending_token.as_ref().unwrap().clone(),
-
         selected_command: None,
         provided_parameter_count: 0,
         error_message: String::new(),
@@ -231,20 +232,22 @@ pub fn run(trove: &mut Trove, config: &HoardConfig) -> Result<Option<HoardCmd>> 
             }
         }
 
-        if app_state.query_gpt && app_state.control == ControlState::Gpt {
-            if app_state.buffered_tick {
-                let gpt_command = prompt(&app_state.input[..], &openai_api_key);
-                let _ = trove.add_command(gpt_command, false);
-                app_state.commands = trove.commands.clone();
-                app_state.draw = DrawState::Search;
-                app_state.control = ControlState::Search;
-                app_state.input = String::new();
-                app_state.query_gpt = false;
-                app_state.buffered_tick = false;
-            } else {
-                app_state.buffered_tick = true;
-            }
-        }
+        // if app_state.query_gpt && app_state.control == ControlState::Gpt {
+        //     if app_state.buffered_tick {
+        //         let gpt_command = prompt(&app_state.input[..], &openai_api_key);
+        //         let _ = trove.add_command(gpt_command, false);
+        //         app_state.commands = trove.commands.clone();
+        //         app_state.draw = DrawState::Search;
+        //         app_state.control = ControlState::Search;
+        //         app_state.input = String::new();
+        //         app_state.query_gpt = false;
+        //         app_state.buffered_tick = false;
+        //     } else {
+        //         app_state.buffered_tick = true;
+        //     }
+        // }
+
+        app_state.buffered_tick = true;
 
         if let Event::Input(input) = events.next()? {
             let command = match app_state.draw {
@@ -275,18 +278,24 @@ pub fn run(trove: &mut Trove, config: &HoardConfig) -> Result<Option<HoardCmd>> 
                 if app_state.draw == DrawState::Create {
                     let _ = trove.add_command(output, true);
                     app_state.commands = trove.commands.clone();
-                    app_state.commands.sort_by(|a, b| b.usage_count.cmp(&a.usage_count));
+                    app_state
+                        .commands
+                        .sort_by(|a, b| b.usage_count.cmp(&a.usage_count));
                     app_state.draw = DrawState::Search;
                 } else if app_state.control == ControlState::Edit {
                     // Command has been edited
                     trove.update_command_by_name(&output);
                     app_state.commands = trove.commands.clone();
-                    app_state.commands.sort_by(|a, b| b.usage_count.cmp(&a.usage_count));
+                    app_state
+                        .commands
+                        .sort_by(|a, b| b.usage_count.cmp(&a.usage_count));
                     // app_state.control = ControlState::Search;
                 } else if app_state.should_delete {
                     trove.remove_command(&output.name).ok();
                     app_state.commands = trove.commands.clone();
-                    app_state.commands.sort_by(|a, b| b.usage_count.cmp(&a.usage_count));
+                    app_state
+                        .commands
+                        .sort_by(|a, b| b.usage_count.cmp(&a.usage_count));
                     app_state.should_delete = false;
                 } else {
                     // Command has been selected
