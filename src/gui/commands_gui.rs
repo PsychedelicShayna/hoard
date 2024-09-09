@@ -1,13 +1,10 @@
 use crate::config::HoardConfig;
 use crate::core::trove::Trove;
 use crate::core::HoardCmd;
-use crate::gpt::prompt;
 use crate::gui::event::{Config, Event, Events};
 use crate::gui::help::{draw as draw_help, key_handler as key_handler_help};
 use crate::gui::inline_edit::controls::key_handler as key_handler_inline_edit;
 use crate::gui::list_search::controls::key_handler as key_handler_list_search;
-use crate::gui::list_search::gpt_controls::key_handler as key_handler_gpt_create;
-use crate::gui::list_search::key_not_set_controls::key_handler as key_handler_no_key_set;
 use crate::gui::list_search::render::draw as draw_list_search;
 use crate::gui::new_command::controls::key_handler as key_handler_create_command;
 use crate::gui::new_command::render::draw as draw_new_command_input;
@@ -34,12 +31,9 @@ pub struct State {
     pub input: String,
     pub namespace_tab: ListState,
     pub new_command: Option<HoardCmd>,
-    pub openai_key_set: bool,
     pub parameter_ending_token: String,
     pub parameter_token: String,
-    pub popup_message: String,
     pub provided_parameter_count: u16,
-    pub query_gpt: bool,
     pub selected_command: Option<HoardCmd>,
     pub should_delete: bool,
     pub should_exit: bool,
@@ -66,14 +60,6 @@ impl State {
         };
         self
     }
-
-    pub fn get_default_popupmsg() -> String {
-        "Generating command with GPT ...".to_owned()
-    }
-
-    pub fn get_no_api_key_popupmsg() -> String {
-        "OpenAI API key is not set".to_owned()
-    }
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -94,8 +80,6 @@ pub enum DrawState {
 pub enum ControlState {
     Search,
     Edit,
-    Gpt,
-    KeyNotSet,
 }
 
 impl fmt::Display for ControlState {
@@ -106,11 +90,6 @@ impl fmt::Display for ControlState {
                 "Tab (Cycle Right), k (Up), j (Down), a (Add), <Alt+D> (Delete), ? (Help)"
             ),
             Self::Edit => write!(f, "k (Up), j (Down)"),
-            Self::Gpt => write!(
-                f,
-                "Describe your command (<Enter> to confirm. <Esc> to abort)"
-            ),
-            Self::KeyNotSet => write!(f, "(<Esc> to abort)"),
         }
     }
 }
@@ -169,11 +148,6 @@ pub fn run(trove: &mut Trove, config: &HoardConfig) -> Result<Option<HoardCmd>> 
     });
     let trove_clone = trove.clone();
 
-    let mut openai_api_key = std::env::var("OPENAI_API_KEY").unwrap_or_default();
-    if openai_api_key.is_empty() {
-        openai_api_key = config.gpt_api_key.clone().unwrap_or_default();
-    }
-
     let mut app_state = State {
         input: String::new(),
         commands: trove.get_commands_sorted_by_usage(),
@@ -192,10 +166,7 @@ pub fn run(trove: &mut Trove, config: &HoardConfig) -> Result<Option<HoardCmd>> 
         selected_command: None,
         provided_parameter_count: 0,
         error_message: String::new(),
-        query_gpt: false,
-        popup_message: State::get_default_popupmsg(),
         buffered_tick: false,
-        openai_key_set: !openai_api_key.is_empty(),
     };
 
     app_state.command_list.select(Some(0));
@@ -232,21 +203,6 @@ pub fn run(trove: &mut Trove, config: &HoardConfig) -> Result<Option<HoardCmd>> 
             }
         }
 
-        // if app_state.query_gpt && app_state.control == ControlState::Gpt {
-        //     if app_state.buffered_tick {
-        //         let gpt_command = prompt(&app_state.input[..], &openai_api_key);
-        //         let _ = trove.add_command(gpt_command, false);
-        //         app_state.commands = trove.commands.clone();
-        //         app_state.draw = DrawState::Search;
-        //         app_state.control = ControlState::Search;
-        //         app_state.input = String::new();
-        //         app_state.query_gpt = false;
-        //         app_state.buffered_tick = false;
-        //     } else {
-        //         app_state.buffered_tick = true;
-        //     }
-        // }
-
         app_state.buffered_tick = true;
 
         if let Event::Input(input) = events.next()? {
@@ -264,8 +220,6 @@ pub fn run(trove: &mut Trove, config: &HoardConfig) -> Result<Option<HoardCmd>> 
                         &trove.commands,
                         &namespace_tabs,
                     ),
-                    ControlState::Gpt => key_handler_gpt_create(input, &mut app_state),
-                    ControlState::KeyNotSet => key_handler_no_key_set(input, &mut app_state),
                 },
                 DrawState::ParameterInput => key_handler_parameter_input(input, &mut app_state),
                 DrawState::Help => key_handler_help(input, &mut app_state),

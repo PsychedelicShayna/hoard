@@ -122,10 +122,4 @@ pub enum Commands {
         shell: String,
     },
 
-    /// Synchronize your trove file on multiple clients. If no mode is selected, it will fetch your online trove file and synchronize it with your local trove file
-    Sync {
-        ///
-        #[arg(value_enum)]
-        command: Mode,
-    },
 }

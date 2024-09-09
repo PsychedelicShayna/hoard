@@ -35,20 +35,6 @@ pub fn key_handler(
             state.new_command = Some(HoardCmd::default());
             None
         }
-        // ChatGPT Mode (won't ever use this lol, no api key rip)
-        (ViMode::Normal, Key::Char('G')) => {
-            // Same drawing state, only update how control works
-            state.draw = DrawState::Search;
-            if state.openai_key_set {
-                state.control = ControlState::Gpt;
-            } else {
-                state.control = ControlState::KeyNotSet;
-                state.query_gpt = true;
-            }
-            state.new_command = Some(HoardCmd::default());
-            None
-        }
-
         // Switch to the right pane
         (ViMode::Normal, Key::Char('l')) => {
             let selected_command = state
@@ -269,10 +255,7 @@ mod test_controls {
             selected_command: None,
             provided_parameter_count: 0,
             error_message: String::new(),
-            query_gpt: false,
             buffered_tick: false,
-            popup_message: State::get_default_popupmsg(),
-            openai_key_set: false,
         };
 
         state.command_list.select(Some(0));

@@ -1,5 +1,3 @@
-#![warn(clippy::pedantic, clippy::nursery)]
-
 extern crate serde_yaml;
 
 #[macro_use]
@@ -13,10 +11,8 @@ mod cli_commands;
 mod config;
 mod core;
 mod filter;
-mod gpt;
 mod gui;
 mod hoard;
-mod sync_models;
 mod util;
 use hoard::Hoard;
 

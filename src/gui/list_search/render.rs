@@ -2,7 +2,6 @@ use crate::config::HoardConfig;
 use crate::core::HoardCmd;
 use crate::gui::commands_gui::{ControlState, EditSelection};
 use crate::gui::commands_gui::{State, ViMode};
-use crate::gui::help::HELP_KEY;
 use ratatui::backend::TermionBackend;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
@@ -162,7 +161,7 @@ fn get_color(
     );
 
     match app.control {
-        ControlState::Search | ControlState::Gpt | ControlState::KeyNotSet => normal,
+        ControlState::Search  => normal,
         ControlState::Edit => {
             if command_render == &app.edit_selection {
                 return highlighted;
@@ -175,7 +174,7 @@ fn get_color(
 
 fn coerce_string_by_mode(s: String, app: &State, command_render: &EditSelection) -> String {
     match app.control {
-        ControlState::Search | ControlState::Gpt | ControlState::KeyNotSet => s,
+        ControlState::Search => s,
         ControlState::Edit => {
             if command_render == &app.edit_selection {
                 return app.string_to_edit.clone();
@@ -341,7 +340,7 @@ fn render_commands<'a>(
 
 const fn get_footer_constraints(control: &ControlState) -> (u16, u16) {
     match control {
-        ControlState::Search | ControlState::Gpt | ControlState::KeyNotSet => (50, 50),
+        ControlState::Search => (50, 50),
         ControlState::Edit => (99, 1),
     }
 }
